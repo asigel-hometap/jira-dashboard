@@ -1674,12 +1674,11 @@ export class DataProcessor {
       
       // Extract unique values for each filter
       const assignees = [...new Set(allIssues.map(issue => issue.assignee).filter(Boolean))].sort();
-      const teams = [...new Set(allIssues.map(issue => issue.team).filter(Boolean))].sort();
       const bizChamps = [...new Set(allIssues.map(issue => issue.bizChamp).filter(Boolean))].sort();
       
       return {
         assignees,
-        teams,
+        teams: [], // Team filtering not implemented - no team data in current Issue type
         bizChamps
       };
     } catch (error) {

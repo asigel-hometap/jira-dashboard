@@ -198,7 +198,6 @@ export default function Home() {
                       height={40}
                       color={member.isOverloaded ? '#EF4444' : '#3B82F6'}
                       strokeWidth={2}
-                      dates={trendsData?.dates || []}
                       showTooltip={true}
                     />
                   </div>

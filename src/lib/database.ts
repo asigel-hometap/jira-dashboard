@@ -486,27 +486,46 @@ export class DatabaseService {
     });
   }
 
-  async getCycleTimeCache(issueKey: string): Promise<{
+  async getCycleTimeCache(issueKey?: string): Promise<Array<{
+    issueKey: string;
     discoveryStartDate: Date | null;
     discoveryEndDate: Date | null;
     endDateLogic: string;
     calendarDaysInDiscovery: number | null;
     completionQuarter: string | null;
     calculatedAt: Date;
-  } | null> {
-    const get = promisify(this.db.get.bind(this.db)) as (sql: string, params: any[]) => Promise<any>;
-    const row = await get('SELECT * FROM cycle_time_cache WHERE issue_key = ?', [issueKey]) as any;
-    
-    if (!row) return null;
-    
-    return {
-      discoveryStartDate: row?.discovery_start_date ? new Date(row.discovery_start_date) : null,
-      discoveryEndDate: row?.discovery_end_date ? new Date(row.discovery_end_date) : null,
-      endDateLogic: row?.end_date_logic,
-      calendarDaysInDiscovery: row?.calendar_days_in_discovery,
-      completionQuarter: row?.completion_quarter,
-      calculatedAt: new Date(row?.calculated_at)
-    };
+  }>> {
+    if (issueKey) {
+      // Get specific issue cache
+      const get = promisify(this.db.get.bind(this.db)) as (sql: string, params: any[]) => Promise<any>;
+      const row = await get('SELECT * FROM cycle_time_cache WHERE issue_key = ?', [issueKey]) as any;
+      
+      if (!row) return [];
+      
+      return [{
+        issueKey: row.issue_key,
+        discoveryStartDate: row?.discovery_start_date ? new Date(row.discovery_start_date) : null,
+        discoveryEndDate: row?.discovery_end_date ? new Date(row.discovery_end_date) : null,
+        endDateLogic: row?.end_date_logic,
+        calendarDaysInDiscovery: row?.calendar_days_in_discovery,
+        completionQuarter: row?.completion_quarter,
+        calculatedAt: new Date(row?.calculated_at)
+      }];
+    } else {
+      // Get all cycle time cache
+      const all = promisify(this.db.all.bind(this.db)) as (sql: string) => Promise<any[]>;
+      const rows = await all('SELECT * FROM cycle_time_cache ORDER BY calculated_at DESC') as any[];
+      
+      return rows.map(row => ({
+        issueKey: row.issue_key,
+        discoveryStartDate: row?.discovery_start_date ? new Date(row.discovery_start_date) : null,
+        discoveryEndDate: row?.discovery_end_date ? new Date(row.discovery_end_date) : null,
+        endDateLogic: row?.end_date_logic,
+        calendarDaysInDiscovery: row?.calendar_days_in_discovery,
+        completionQuarter: row?.completion_quarter,
+        calculatedAt: new Date(row?.calculated_at)
+      }));
+    }
   }
 
   async getAllCycleTimeCache(): Promise<Array<{

@@ -62,8 +62,8 @@ export async function GET(request: NextRequest) {
         if (completionQuarter === quarter) {
           completedProjects.push({
             issueKey: issue.key,
-            summary: issue.summary,
-            assignee: issue.assignee || 'Unassigned',
+            summary: issue.fields.summary,
+            assignee: issue.fields.assignee?.displayName || 'Unassigned',
             discoveryStartDate: cycleInfo.discoveryStartDate.toISOString().split('T')[0],
             calendarDaysInDiscovery: cycleInfo.calendarDaysInDiscovery || 0,
             activeDaysInDiscovery: cycleInfo.activeDaysInDiscovery || 0

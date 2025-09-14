@@ -1,0 +1,629 @@
+{
+    "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+    "id": "46948",
+    "self": "https://hometap.atlassian.net/rest/api/2/issue/46948",
+    "key": "HT-479",
+    "names": {
+      "statuscategorychangedate": "Status Category Changed",
+      "customfield_10230": "Regulatory",
+      "customfield_10231": "TRD",
+      "fixVersions": "Fix versions",
+      "customfield_10232": "Designs",
+      "statusCategory": "Status Category",
+      "resolution": "Resolution",
+      "customfield_10233": "Architect",
+      "customfield_10234": "QA Lead",
+      "customfield_10235": "Enablement Lead",
+      "customfield_10229": "Conversion",
+      "lastViewed": "Last Viewed",
+      "customfield_10460": "Comments",
+      "customfield_10461": "Linked items",
+      "customfield_10462": "Delivery progress",
+      "customfield_10463": "Delivery status",
+      "customfield_10221": "Goals",
+      "priority": "Priority",
+      "customfield_10586": "DateChange",
+      "labels": "Labels",
+      "customfield_10983": "DigiFi",
+      "customfield_10456": "Idea archived on",
+      "customfield_10457": "Atlassian project",
+      "customfield_10458": "Atlassian project status",
+      "customfield_10459": "Insights",
+      "timeestimate": "Remaining Estimate",
+      "aggregatetimeoriginalestimate": "Σ Original Estimate",
+      "versions": "Affects versions",
+      "issuelinks": "Linked Issues",
+      "assignee": "Assignee",
+      "status": "Status",
+      "components": "Components",
+      "customfield_10454": "Idea archived",
+      "customfield_10455": "Idea archived by",
+      "aggregatetimeestimate": "Σ Remaining Estimate",
+      "creator": "Creator",
+      "subtasks": "Sub-tasks",
+      "reporter": "Reporter",
+      "aggregateprogress": "Σ Progress",
+      "customfield_10286": "Brand/Homeowner",
+      "customfield_10287": "Capital Needs",
+      "customfield_10288": "Impact",
+      "customfield_11015": "Mktg Function",
+      "customfield_10951": "Initial Design Review",
+      "customfield_10952": "Designs Approved",
+      "customfield_10953": "Analytics Review",
+      "customfield_10954": "Test Strategy Approved",
+      "progress": "Progress",
+      "votes": "Votes",
+      "worklog": "Log Work",
+      "issuetype": "Issue Type",
+      "customfield_11081": "Discovery Complexity",
+      "customfield_10270": "Requestor",
+      "timespent": "Time Spent",
+      "customfield_10150": "Biz Champ",
+      "customfield_10271": "Days in Discovery",
+      "customfield_10030": "Start date",
+      "project": "Project",
+      "customfield_10273": "Discovery Age",
+      "customfield_10274": "Days in Build",
+      "customfield_10275": "Days In Inbox",
+      "aggregatetimespent": "Σ Time Spent",
+      "customfield_10276": "Days in Committed",
+      "customfield_10279": "Hypercare",
+      "customfield_10269": "Compliance Signoff",
+      "customfield_10148": "Product Area",
+      "customfield_10149": "Eng Leads",
+      "customfield_10820": "Discovery Calendar Weeks",
+      "customfield_10821": "Build Calendar Weeks",
+      "customfield_10029": "Flagged",
+      "customfield_10822": "Last Active Check",
+      "resolutiondate": "Resolved",
+      "workratio": "Work Ratio",
+      "watches": "Watchers",
+      "created": "Created",
+      "customfield_10262": "Testing Complete",
+      "customfield_10141": "Enablement",
+      "customfield_10263": "UAT Kickoff",
+      "customfield_10264": "Legal Lead",
+      "customfield_10144": "Effort",
+      "customfield_10145": "Short description",
+      "customfield_10267": "Compliance Lead",
+      "customfield_10421": "Reason for Change",
+      "customfield_10389": "Discovery Effort",
+      "customfield_10147": "Product Brief",
+      "customfield_10268": "Legal Signoff",
+      "customfield_10817": "First Picked Up",
+      "customfield_10818": "Discovery Active Weeks",
+      "customfield_10819": "Build Active Weeks",
+      "updated": "Updated",
+      "timeoriginalestimate": "Original estimate",
+      "customfield_10250": "Rollout",
+      "description": "Description",
+      "customfield_10131": "Roadmap",
+      "customfield_10253": "Design Lead",
+      "customfield_10011": "Rank",
+      "customfield_10135": "Teams",
+      "timetracking": "Time tracking",
+      "customfield_10247": "System Health",
+      "customfield_10248": "Quality",
+      "security": "Security Level",
+      "attachment": "Attachment",
+      "summary": "Summary",
+      "customfield_10241": "Build Kickoff",
+      "customfield_10242": "Test Strategy",
+      "customfield_10000": "Development",
+      "customfield_10001": "Team",
+      "customfield_10243": "Build Complete",
+      "customfield_10244": "Deployed",
+      "customfield_10883": "Commited Weeks",
+      "customfield_10487": "Project Category",
+      "environment": "Environment",
+      "customfield_10238": "Health",
+      "customfield_10239": "Discovery Kickoff",
+      "duedate": "Due date",
+      "comment": "Comment"
+    },
+    "fields": {
+      "statuscategorychangedate": "2025-07-28T11:17:02.116-0400",
+      "customfield_10230": null,
+      "customfield_10231": "https://not-applicable.com",
+      "fixVersions": [],
+      "customfield_10232": "https://not-applicable.com",
+      "statusCategory": {
+        "self": "https://hometap.atlassian.net/rest/api/2/statuscategory/2",
+        "id": 2,
+        "key": "new",
+        "colorName": "blue-gray",
+        "name": "To Do"
+      },
+      "resolution": null,
+      "customfield_10233": [
+        {
+          "self": "https://hometap.atlassian.net/rest/api/2/user?accountId=712020%3Ac60066a5-7a33-4252-b6e4-3bb5e3bf1922",
+          "accountId": "712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922",
+          "avatarUrls": {
+            "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/48",
+            "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/24",
+            "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/16",
+            "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/32"
+          },
+          "displayName": "Not Applicable",
+          "active": true,
+          "timeZone": "America/New_York",
+          "accountType": "atlassian"
+        }
+      ],
+      "customfield_10234": [
+        {
+          "self": "https://hometap.atlassian.net/rest/api/2/user?accountId=712020%3Ac60066a5-7a33-4252-b6e4-3bb5e3bf1922",
+          "accountId": "712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922",
+          "avatarUrls": {
+            "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/48",
+            "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/24",
+            "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/16",
+            "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/32"
+          },
+          "displayName": "Not Applicable",
+          "active": true,
+          "timeZone": "America/New_York",
+          "accountType": "atlassian"
+        }
+      ],
+      "customfield_10235": null,
+      "customfield_10229": null,
+      "lastViewed": null,
+      "customfield_10460": null,
+      "customfield_10461": null,
+      "customfield_10462": null,
+      "customfield_10463": null,
+      "customfield_10221": null,
+      "priority": {
+        "self": "https://hometap.atlassian.net/rest/api/2/priority/10000",
+        "iconUrl": "https://images-na.ssl-images-amazon.com/images/I/11onDaxa5KL.png",
+        "name": "No Priority",
+        "id": "10000"
+      },
+      "customfield_10586": null,
+      "labels": [],
+      "customfield_10983": null,
+      "customfield_10456": "2025-07-28T11:45:00.000-0400",
+      "customfield_10457": null,
+      "customfield_10458": null,
+      "customfield_10459": null,
+      "timeestimate": null,
+      "aggregatetimeoriginalestimate": null,
+      "versions": [],
+      "issuelinks": [],
+      "assignee": {
+        "self": "https://hometap.atlassian.net/rest/api/2/user?accountId=5b3fb10124f7612e7d4b503b",
+        "accountId": "5b3fb10124f7612e7d4b503b",
+        "emailAddress": "asigel@hometap.com",
+        "avatarUrls": {
+          "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5b3fb10124f7612e7d4b503b/36af5f34-9f50-4e6c-be94-04f4745b1268/48",
+          "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5b3fb10124f7612e7d4b503b/36af5f34-9f50-4e6c-be94-04f4745b1268/24",
+          "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5b3fb10124f7612e7d4b503b/36af5f34-9f50-4e6c-be94-04f4745b1268/16",
+          "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5b3fb10124f7612e7d4b503b/36af5f34-9f50-4e6c-be94-04f4745b1268/32"
+        },
+        "displayName": "Adam Sigel",
+        "active": true,
+        "timeZone": "America/New_York",
+        "accountType": "atlassian"
+      },
+      "status": {
+        "self": "https://hometap.atlassian.net/rest/api/2/status/10247",
+        "description": "",
+        "iconUrl": "https://hometap.atlassian.net/",
+        "name": "02 Generative Discovery",
+        "id": "10247",
+        "statusCategory": {
+          "self": "https://hometap.atlassian.net/rest/api/2/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        }
+      },
+      "components": [],
+      "customfield_10454": {
+        "self": "https://hometap.atlassian.net/rest/api/2/customFieldOption/10503",
+        "value": "Yes",
+        "id": "10503"
+      },
+      "customfield_10455": [
+        {
+          "self": "https://hometap.atlassian.net/rest/api/2/user?accountId=5b3fb10124f7612e7d4b503b",
+          "accountId": "5b3fb10124f7612e7d4b503b",
+          "emailAddress": "asigel@hometap.com",
+          "avatarUrls": {
+            "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5b3fb10124f7612e7d4b503b/36af5f34-9f50-4e6c-be94-04f4745b1268/48",
+            "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5b3fb10124f7612e7d4b503b/36af5f34-9f50-4e6c-be94-04f4745b1268/24",
+            "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5b3fb10124f7612e7d4b503b/36af5f34-9f50-4e6c-be94-04f4745b1268/16",
+            "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5b3fb10124f7612e7d4b503b/36af5f34-9f50-4e6c-be94-04f4745b1268/32"
+          },
+          "displayName": "Adam Sigel",
+          "active": true,
+          "timeZone": "America/New_York",
+          "accountType": "atlassian"
+        }
+      ],
+      "aggregatetimeestimate": null,
+      "creator": {
+        "self": "https://hometap.atlassian.net/rest/api/2/user?accountId=5b3fb10124f7612e7d4b503b",
+        "accountId": "5b3fb10124f7612e7d4b503b",
+        "emailAddress": "asigel@hometap.com",
+        "avatarUrls": {
+          "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5b3fb10124f7612e7d4b503b/36af5f34-9f50-4e6c-be94-04f4745b1268/48",
+          "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5b3fb10124f7612e7d4b503b/36af5f34-9f50-4e6c-be94-04f4745b1268/24",
+          "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5b3fb10124f7612e7d4b503b/36af5f34-9f50-4e6c-be94-04f4745b1268/16",
+          "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5b3fb10124f7612e7d4b503b/36af5f34-9f50-4e6c-be94-04f4745b1268/32"
+        },
+        "displayName": "Adam Sigel",
+        "active": true,
+        "timeZone": "America/New_York",
+        "accountType": "atlassian"
+      },
+      "subtasks": [],
+      "reporter": {
+        "self": "https://hometap.atlassian.net/rest/api/2/user?accountId=5b3fb10124f7612e7d4b503b",
+        "accountId": "5b3fb10124f7612e7d4b503b",
+        "emailAddress": "asigel@hometap.com",
+        "avatarUrls": {
+          "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5b3fb10124f7612e7d4b503b/36af5f34-9f50-4e6c-be94-04f4745b1268/48",
+          "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5b3fb10124f7612e7d4b503b/36af5f34-9f50-4e6c-be94-04f4745b1268/24",
+          "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5b3fb10124f7612e7d4b503b/36af5f34-9f50-4e6c-be94-04f4745b1268/16",
+          "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/5b3fb10124f7612e7d4b503b/36af5f34-9f50-4e6c-be94-04f4745b1268/32"
+        },
+        "displayName": "Adam Sigel",
+        "active": true,
+        "timeZone": "America/New_York",
+        "accountType": "atlassian"
+      },
+      "aggregateprogress": {
+        "progress": 0,
+        "total": 0
+      },
+      "customfield_10286": null,
+      "customfield_10287": null,
+      "customfield_10288": null,
+      "customfield_11015": null,
+      "customfield_10951": {
+        "self": "https://hometap.atlassian.net/rest/api/2/customFieldOption/11065",
+        "value": "N/A",
+        "id": "11065"
+      },
+      "customfield_10952": {
+        "self": "https://hometap.atlassian.net/rest/api/2/customFieldOption/11067",
+        "value": "N/A",
+        "id": "11067"
+      },
+      "customfield_10953": {
+        "self": "https://hometap.atlassian.net/rest/api/2/customFieldOption/11069",
+        "value": "N/A",
+        "id": "11069"
+      },
+      "customfield_10954": {
+        "self": "https://hometap.atlassian.net/rest/api/2/customFieldOption/11071",
+        "value": "N/A",
+        "id": "11071"
+      },
+      "progress": {
+        "progress": 0,
+        "total": 0
+      },
+      "votes": {
+        "self": "https://hometap.atlassian.net/rest/api/2/issue/HT-479/votes",
+        "votes": 0,
+        "hasVoted": false
+      },
+      "worklog": {
+        "startAt": 0,
+        "maxResults": 20,
+        "total": 0,
+        "worklogs": []
+      },
+      "issuetype": {
+        "self": "https://hometap.atlassian.net/rest/api/2/issuetype/10189",
+        "id": "10189",
+        "description": "Discovery idea",
+        "iconUrl": "https://hometap.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10322?size=medium",
+        "name": "Idea",
+        "subtask": false,
+        "avatarId": 10322,
+        "entityId": "449627ed-bb32-4ad2-953d-97d1e7038dd7",
+        "hierarchyLevel": 0
+      },
+      "customfield_11081": null,
+      "customfield_10270": null,
+      "timespent": null,
+      "customfield_10150": [
+        {
+          "self": "https://hometap.atlassian.net/rest/api/2/user?accountId=640ed9315534b0bf743f5309",
+          "accountId": "640ed9315534b0bf743f5309",
+          "avatarUrls": {
+            "48x48": "https://secure.gravatar.com/avatar/bb91861ef1d55c82ebf26bdff8f207e7?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FEC-5.png",
+            "24x24": "https://secure.gravatar.com/avatar/bb91861ef1d55c82ebf26bdff8f207e7?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FEC-5.png",
+            "16x16": "https://secure.gravatar.com/avatar/bb91861ef1d55c82ebf26bdff8f207e7?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FEC-5.png",
+            "32x32": "https://secure.gravatar.com/avatar/bb91861ef1d55c82ebf26bdff8f207e7?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FEC-5.png"
+          },
+          "displayName": "Eric Chacon",
+          "active": true,
+          "timeZone": "America/New_York",
+          "accountType": "atlassian"
+        }
+      ],
+      "customfield_10271": null,
+      "customfield_10030": null,
+      "project": {
+        "self": "https://hometap.atlassian.net/rest/api/2/project/10058",
+        "id": "10058",
+        "key": "HT",
+        "name": "Hometap",
+        "projectTypeKey": "product_discovery",
+        "simplified": true,
+        "avatarUrls": {
+          "48x48": "https://hometap.atlassian.net/rest/api/2/universal_avatar/view/type/project/avatar/10648",
+          "24x24": "https://hometap.atlassian.net/rest/api/2/universal_avatar/view/type/project/avatar/10648?size=small",
+          "16x16": "https://hometap.atlassian.net/rest/api/2/universal_avatar/view/type/project/avatar/10648?size=xsmall",
+          "32x32": "https://hometap.atlassian.net/rest/api/2/universal_avatar/view/type/project/avatar/10648?size=medium"
+        }
+      },
+      "customfield_10273": null,
+      "customfield_10274": null,
+      "customfield_10275": null,
+      "aggregatetimespent": null,
+      "customfield_10276": null,
+      "customfield_10279": null,
+      "customfield_10269": null,
+      "customfield_10148": [
+        {
+          "self": "https://hometap.atlassian.net/rest/api/2/customFieldOption/10334",
+          "value": "Marketing Site & Landing",
+          "id": "10334"
+        }
+      ],
+      "customfield_10149": [
+        {
+          "self": "https://hometap.atlassian.net/rest/api/2/user?accountId=712020%3Ac60066a5-7a33-4252-b6e4-3bb5e3bf1922",
+          "accountId": "712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922",
+          "avatarUrls": {
+            "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/48",
+            "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/24",
+            "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/16",
+            "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/32"
+          },
+          "displayName": "Not Applicable",
+          "active": true,
+          "timeZone": "America/New_York",
+          "accountType": "atlassian"
+        }
+      ],
+      "customfield_10820": null,
+      "customfield_10821": null,
+      "customfield_10029": null,
+      "customfield_10822": null,
+      "resolutiondate": null,
+      "workratio": -1,
+      "watches": {
+        "self": "https://hometap.atlassian.net/rest/api/2/issue/HT-479/watchers",
+        "watchCount": 2,
+        "isWatching": true
+      },
+      "created": "2025-07-28T10:46:01.844-0400",
+      "customfield_10262": "{\"start\":\"2025-07-28\",\"end\":\"2025-07-28\"}",
+      "customfield_10141": "{\"start\":\"2025-07-28\",\"end\":\"2025-07-28\"}",
+      "customfield_10263": "{\"start\":\"2025-07-28\",\"end\":\"2025-07-28\"}",
+      "customfield_10264": [
+        {
+          "self": "https://hometap.atlassian.net/rest/api/2/user?accountId=712020%3Ac60066a5-7a33-4252-b6e4-3bb5e3bf1922",
+          "accountId": "712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922",
+          "avatarUrls": {
+            "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/48",
+            "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/24",
+            "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/16",
+            "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/32"
+          },
+          "displayName": "Not Applicable",
+          "active": true,
+          "timeZone": "America/New_York",
+          "accountType": "atlassian"
+        }
+      ],
+      "customfield_10144": 1,
+      "customfield_10145": null,
+      "customfield_10267": [
+        {
+          "self": "https://hometap.atlassian.net/rest/api/2/user?accountId=712020%3Ac60066a5-7a33-4252-b6e4-3bb5e3bf1922",
+          "accountId": "712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922",
+          "avatarUrls": {
+            "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/48",
+            "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/24",
+            "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/16",
+            "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/32"
+          },
+          "displayName": "Not Applicable",
+          "active": true,
+          "timeZone": "America/New_York",
+          "accountType": "atlassian"
+        }
+      ],
+      "customfield_10421": "Testing",
+      "customfield_10389": 0,
+      "customfield_10147": "http://not-applicable.com/",
+      "customfield_10268": null,
+      "customfield_10817": "{\"start\":\"2025-07-28\",\"end\":\"2025-07-28\"}",
+      "customfield_10818": 4,
+      "customfield_10819": null,
+      "updated": "2025-09-11T00:01:02.010-0400",
+      "timeoriginalestimate": null,
+      "customfield_10250": null,
+      "description": "",
+      "customfield_10131": null,
+      "customfield_10253": [
+        {
+          "self": "https://hometap.atlassian.net/rest/api/2/user?accountId=712020%3Ac60066a5-7a33-4252-b6e4-3bb5e3bf1922",
+          "accountId": "712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922",
+          "avatarUrls": {
+            "48x48": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/48",
+            "24x24": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/24",
+            "16x16": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/16",
+            "32x32": "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/712020:c60066a5-7a33-4252-b6e4-3bb5e3bf1922/186219e4-1ce7-4f6f-bceb-d576859aa999/32"
+          },
+          "displayName": "Not Applicable",
+          "active": true,
+          "timeZone": "America/New_York",
+          "accountType": "atlassian"
+        }
+      ],
+      "customfield_10011": "2|i02513:",
+      "customfield_10135": [
+        {
+          "self": "https://hometap.atlassian.net/rest/api/2/customFieldOption/10328",
+          "value": "DEPT",
+          "id": "10328"
+        }
+      ],
+      "timetracking": {
+  
+      },
+      "customfield_10247": null,
+      "customfield_10248": null,
+      "security": null,
+      "attachment": [],
+      "summary": "Test Item",
+      "customfield_10241": "{\"start\":\"2025-07-28\",\"end\":\"2025-07-28\"}",
+      "customfield_10242": "https://not-applicable.com",
+      "customfield_10000": "{}",
+      "customfield_10001": null,
+      "customfield_10243": "{\"start\":\"2025-07-28\",\"end\":\"2025-07-28\"}",
+      "customfield_10244": null,
+      "customfield_10883": null,
+      "customfield_10487": {
+        "self": "https://hometap.atlassian.net/rest/api/2/customFieldOption/10536",
+        "value": "Marketing Site",
+        "id": "10536"
+      },
+      "environment": null,
+      "customfield_10238": {
+        "self": "https://hometap.atlassian.net/rest/api/2/customFieldOption/10233",
+        "value": "On Track",
+        "id": "10233"
+      },
+      "customfield_10239": "{\"start\":\"2025-07-29\",\"end\":\"2025-07-29\"}",
+      "duedate": null,
+      "comment": {
+        "comments": [
+          {
+            "self": "https://hometap.atlassian.net/rest/api/2/issue/46948/comment/57986",
+            "id": "57986",
+            "author": {
+              "self": "https://hometap.atlassian.net/rest/api/2/user?accountId=557058%3Af58131cb-b67d-43c7-b30d-6b58d40bd077",
+              "accountId": "557058:f58131cb-b67d-43c7-b30d-6b58d40bd077",
+              "avatarUrls": {
+                "48x48": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "24x24": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "16x16": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "32x32": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png"
+              },
+              "displayName": "Automation for Jira",
+              "active": true,
+              "timeZone": "America/New_York",
+              "accountType": "app"
+            },
+            "body": "Adam Sigel: \"04 Problem Discovery → 03 Committed\" - Testing",
+            "updateAuthor": {
+              "self": "https://hometap.atlassian.net/rest/api/2/user?accountId=557058%3Af58131cb-b67d-43c7-b30d-6b58d40bd077",
+              "accountId": "557058:f58131cb-b67d-43c7-b30d-6b58d40bd077",
+              "avatarUrls": {
+                "48x48": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "24x24": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "16x16": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "32x32": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png"
+              },
+              "displayName": "Automation for Jira",
+              "active": true,
+              "timeZone": "America/New_York",
+              "accountType": "app"
+            },
+            "created": "2025-07-28T10:48:57.814-0400",
+            "updated": "2025-07-28T10:48:57.814-0400",
+            "jsdPublic": true
+          },
+          {
+            "self": "https://hometap.atlassian.net/rest/api/2/issue/46948/comment/57987",
+            "id": "57987",
+            "author": {
+              "self": "https://hometap.atlassian.net/rest/api/2/user?accountId=557058%3Af58131cb-b67d-43c7-b30d-6b58d40bd077",
+              "accountId": "557058:f58131cb-b67d-43c7-b30d-6b58d40bd077",
+              "avatarUrls": {
+                "48x48": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "24x24": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "16x16": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "32x32": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png"
+              },
+              "displayName": "Automation for Jira",
+              "active": true,
+              "timeZone": "America/New_York",
+              "accountType": "app"
+            },
+            "body": "Adam Sigel: \"04 Problem Discovery → 03 Committed\" - Testing",
+            "updateAuthor": {
+              "self": "https://hometap.atlassian.net/rest/api/2/user?accountId=557058%3Af58131cb-b67d-43c7-b30d-6b58d40bd077",
+              "accountId": "557058:f58131cb-b67d-43c7-b30d-6b58d40bd077",
+              "avatarUrls": {
+                "48x48": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "24x24": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "16x16": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "32x32": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png"
+              },
+              "displayName": "Automation for Jira",
+              "active": true,
+              "timeZone": "America/New_York",
+              "accountType": "app"
+            },
+            "created": "2025-07-28T10:55:13.907-0400",
+            "updated": "2025-07-28T10:55:13.907-0400",
+            "jsdPublic": true
+          },
+          {
+            "self": "https://hometap.atlassian.net/rest/api/2/issue/46948/comment/57992",
+            "id": "57992",
+            "author": {
+              "self": "https://hometap.atlassian.net/rest/api/2/user?accountId=557058%3Af58131cb-b67d-43c7-b30d-6b58d40bd077",
+              "accountId": "557058:f58131cb-b67d-43c7-b30d-6b58d40bd077",
+              "avatarUrls": {
+                "48x48": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "24x24": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "16x16": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "32x32": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png"
+              },
+              "displayName": "Automation for Jira",
+              "active": true,
+              "timeZone": "America/New_York",
+              "accountType": "app"
+            },
+            "body": "Adam Sigel: \"04 Problem Discovery → 01 Inbox\" - Testing",
+            "updateAuthor": {
+              "self": "https://hometap.atlassian.net/rest/api/2/user?accountId=557058%3Af58131cb-b67d-43c7-b30d-6b58d40bd077",
+              "accountId": "557058:f58131cb-b67d-43c7-b30d-6b58d40bd077",
+              "avatarUrls": {
+                "48x48": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "24x24": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "16x16": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png",
+                "32x32": "https://secure.gravatar.com/avatar/600529a9c8bfef89daa848e6db28ed2d?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FAJ-0.png"
+              },
+              "displayName": "Automation for Jira",
+              "active": true,
+              "timeZone": "America/New_York",
+              "accountType": "app"
+            },
+            "created": "2025-07-28T11:17:04.515-0400",
+            "updated": "2025-07-28T11:17:04.515-0400",
+            "jsdPublic": true
+          }
+        ],
+        "self": "https://hometap.atlassian.net/rest/api/2/issue/46948/comment",
+        "maxResults": 3,
+        "total": 3,
+        "startAt": 0
+      }
+    }
+  }
+  

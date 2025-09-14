@@ -1,103 +1,220 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { WorkloadData } from '@/types/jira';
+import Sparkline from '@/components/Sparkline';
+import HealthBadges from '@/components/HealthBadges';
+
+interface DataContext {
+  lastUpdated: Date;
+  dataSource: string;
+}
+
+
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [workloadData, setWorkloadData] = useState<WorkloadData[]>([]);
+  const [trendsData, setTrendsData] = useState<any>(null);
+  const [dataContext, setDataContext] = useState<DataContext | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const fetchWorkloadData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/workload');
+      const result = await response.json();
+      
+      if (result.success) {
+        setWorkloadData(result.data);
+      } else {
+        setError(result.error || 'Failed to fetch workload data');
+      }
+    } catch (err) {
+      setError('Network error fetching data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const fetchDataContext = async () => {
+    try {
+      const response = await fetch('/api/data-context');
+      const result = await response.json();
+      
+      if (result.success) {
+        setDataContext(result.data);
+      }
+    } catch (err) {
+      console.error('Error fetching data context:', err);
+    }
+  };
+
+
+  const fetchTrendsData = async () => {
+    try {
+      const response = await fetch('/api/workload-trends');
+      const result = await response.json();
+      
+      if (result.success) {
+        setTrendsData(result.data);
+      }
+    } catch (err) {
+      console.error('Error fetching trends data:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchWorkloadData();
+    fetchTrendsData();
+    fetchDataContext();
+  }, []);
+
+  // Helper function to get trend data for a team member
+  const getTrendData = (teamMember: string): number[] => {
+    if (!trendsData) return [];
+    
+    const nameMap: { [key: string]: string } = {
+      'Adam Sigel': 'adam',
+      'Jennie Goldenberg': 'jennie',
+      'Jacqueline Gallagher': 'jacqueline',
+      'Robert J. Johnson': 'robert',
+      'Garima Giri': 'garima',
+      'Lizzy Magill': 'lizzy',
+      'Sanela Smaka': 'sanela'
+    };
+    
+    const key = nameMap[teamMember];
+    if (!key) return [];
+    
+    const data = trendsData[key as keyof typeof trendsData];
+    if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'number') {
+      return data as number[];
+    }
+    return [];
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-md p-4">
+        <div className="flex">
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-red-800">
+              Error loading data
+            </h3>
+            <div className="mt-2 text-sm text-red-700">
+              {error}
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Data Context Header */}
+      {dataContext && (
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-sm font-medium text-blue-800">
+                Data Last Updated: {new Date(dataContext.lastUpdated).toLocaleString()}
+              </h3>
+              <p className="text-sm text-blue-600 mt-1">
+                Source: {dataContext.dataSource}
+              </p>
+            </div>
+            <button
+              onClick={fetchWorkloadData}
+              disabled={loading}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+            >
+              {loading ? 'Refreshing...' : 'Refresh Data'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white shadow rounded-lg">
+        <div className="px-4 py-5 sm:p-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">
+            Team Workload Overview
+          </h2>
+          
+          <div className="grid grid-cols-1 gap-6">
+            {workloadData.map((member) => (
+              <div
+                key={member.teamMember}
+                className={`relative bg-white p-6 rounded-lg border-2 ${
+                  member.isOverloaded 
+                    ? 'border-red-200 bg-red-50' 
+                    : 'border-gray-200'
+                }`}
+              >
+                {member.isOverloaded && (
+                  <div className="absolute top-2 right-2">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                      Overloaded
+                    </span>
+                  </div>
+                )}
+                
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                      <span className="text-sm font-medium text-gray-700">
+                        {member.teamMember.split(' ').map(n => n[0]).join('')}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-gray-900">
+                      {member.teamMember}
+                    </h3>
+                    <p className="text-2xl font-semibold text-gray-900">
+                      {member.activeProjectCount}
+                    </p>
+                    <p className="text-sm text-gray-500">active projects</p>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  {/* Workload Trend Sparkline */}
+                  <div className="mb-3">
+                    <div className="text-xs text-gray-500 mb-1">Workload Trend</div>
+                    <Sparkline 
+                      data={getTrendData(member.teamMember)}
+                      width={400}
+                      height={40}
+                      color={member.isOverloaded ? '#EF4444' : '#3B82F6'}
+                      strokeWidth={2}
+                      dates={trendsData?.dates || []}
+                      showTooltip={true}
+                    />
+                  </div>
+
+                  <div className="mt-3">
+                    <div className="text-xs text-gray-500 mb-2">Project Health</div>
+                    <HealthBadges healthBreakdown={member.healthBreakdown} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+
     </div>
   );
 }

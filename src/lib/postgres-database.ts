@@ -509,6 +509,25 @@ export class PostgresDatabaseService {
     }
   }
 
+  async getAllCycleTimeCache(): Promise<any[]> {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query('SELECT * FROM cycle_time_cache ORDER BY calculated_at DESC');
+      return result.rows.map((row: any) => ({
+        issueKey: row.issue_key,
+        discoveryStartDate: row.discovery_start_date ? new Date(row.discovery_start_date) : null,
+        discoveryEndDate: row.discovery_end_date ? new Date(row.discovery_end_date) : null,
+        endDateLogic: row.end_date_logic,
+        calendarDaysInDiscovery: row.calendar_days_in_discovery,
+        activeDaysInDiscovery: row.active_days_in_discovery,
+        completionQuarter: row.completion_quarter,
+        calculatedAt: new Date(row.calculated_at)
+      }));
+    } finally {
+      client.release();
+    }
+  }
+
   // Project details cache methods
   async insertProjectDetailsCache(details: any): Promise<void> {
     const client = await this.pool.connect();

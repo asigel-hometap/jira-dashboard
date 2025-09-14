@@ -657,7 +657,13 @@ export class PostgresDatabaseService {
   }
 }
 
+// Singleton instance
+let _postgresDbService: PostgresDatabaseService | null = null;
+
 // Get Postgres database service instance
 export function getPostgresDbService(): PostgresDatabaseService {
-  return new PostgresDatabaseService();
+  if (!_postgresDbService) {
+    _postgresDbService = new PostgresDatabaseService();
+  }
+  return _postgresDbService;
 }

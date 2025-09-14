@@ -253,13 +253,13 @@ export class DatabaseService {
   }
 
   async getIssues(): Promise<Issue[]> {
-    const all = promisify(this.db.all.bind(this.db));
+    const all = promisify(this.db.all.bind(this.db)) as (sql: string) => Promise<any[]>;
     const rows = await all('SELECT * FROM issues ORDER BY updated DESC');
     return rows.map(this.mapRowToIssue);
   }
 
   async getActiveIssues(): Promise<Issue[]> {
-    const all = promisify(this.db.all.bind(this.db));
+    const all = promisify(this.db.all.bind(this.db)) as (sql: string) => Promise<any[]>;
     const rows = await all(`
       SELECT * FROM issues 
       WHERE is_archived = FALSE 
@@ -271,7 +271,7 @@ export class DatabaseService {
 
   // Status transitions
   async insertStatusTransition(transition: StatusTransition): Promise<void> {
-    const run = promisify(this.db.run.bind(this.db));
+    const run = promisify(this.db.run.bind(this.db)) as (sql: string, params: any[]) => Promise<void>;
     await run(`
       INSERT INTO status_transitions (
         issue_key, from_status, to_status, from_status_id, to_status_id,
@@ -285,7 +285,7 @@ export class DatabaseService {
   }
 
   async getStatusTransitions(issueKey: string): Promise<StatusTransition[]> {
-    const all = promisify(this.db.all.bind(this.db));
+    const all = promisify(this.db.all.bind(this.db)) as (sql: string, params: any[]) => Promise<any[]>;
     const rows = await all(
       'SELECT * FROM status_transitions WHERE issue_key = ? ORDER BY timestamp ASC',
       [issueKey]
@@ -295,7 +295,7 @@ export class DatabaseService {
 
   // Health transitions
   async insertHealthTransition(transition: HealthTransition): Promise<void> {
-    const run = promisify(this.db.run.bind(this.db));
+    const run = promisify(this.db.run.bind(this.db)) as (sql: string, params: any[]) => Promise<void>;
     await run(`
       INSERT INTO health_transitions (
         issue_key, from_health, to_health, from_health_id, to_health_id,
@@ -310,7 +310,7 @@ export class DatabaseService {
 
   // Team members
   async insertTeamMember(member: TeamMember): Promise<void> {
-    const run = promisify(this.db.run.bind(this.db));
+    const run = promisify(this.db.run.bind(this.db)) as (sql: string, params: any[]) => Promise<void>;
     await run(`
       INSERT OR REPLACE INTO team_members (id, name, email, display_name, avatar_url)
       VALUES (?, ?, ?, ?, ?)
@@ -318,14 +318,14 @@ export class DatabaseService {
   }
 
   async getTeamMembers(): Promise<TeamMember[]> {
-    const all = promisify(this.db.all.bind(this.db));
+    const all = promisify(this.db.all.bind(this.db)) as (sql: string) => Promise<any[]>;
     const rows = await all('SELECT * FROM team_members ORDER BY display_name');
     return rows.map(this.mapRowToTeamMember);
   }
 
   // Project snapshots
   async insertProjectSnapshot(snapshot: ProjectSnapshot): Promise<void> {
-    const run = promisify(this.db.run.bind(this.db));
+    const run = promisify(this.db.run.bind(this.db)) as (sql: string, params: any[]) => Promise<void>;
     await run(`
       INSERT OR REPLACE INTO project_snapshots (
         snapshot_date, issue_key, status, health, assignee, is_active
@@ -337,7 +337,7 @@ export class DatabaseService {
   }
 
   async getProjectSnapshots(startDate?: Date, endDate?: Date): Promise<ProjectSnapshot[]> {
-    const all = promisify(this.db.all.bind(this.db));
+    const all = promisify(this.db.all.bind(this.db)) as (sql: string, params: any[]) => Promise<any[]>;
     let query = 'SELECT * FROM project_snapshots';
     const params: any[] = [];
 
@@ -354,7 +354,7 @@ export class DatabaseService {
 
   // Capacity data
   async insertCapacityData(capacity: CapacityData): Promise<void> {
-    const run = promisify(this.db.run.bind(this.db));
+    const run = promisify(this.db.run.bind(this.db)) as (sql: string, params: any[]) => Promise<void>;
     await run(`
       INSERT OR REPLACE INTO capacity_data (
         date, adam, jennie, jacqueline, robert, garima, lizzy, sanela, total, notes
@@ -367,7 +367,7 @@ export class DatabaseService {
   }
 
   async getCapacityData(startDate?: Date, endDate?: Date): Promise<CapacityData[]> {
-    const all = promisify(this.db.all.bind(this.db));
+    const all = promisify(this.db.all.bind(this.db)) as (sql: string, params: any[]) => Promise<any[]>;
     let query = 'SELECT * FROM capacity_data';
     const params: any[] = [];
 
@@ -494,18 +494,18 @@ export class DatabaseService {
     completionQuarter: string | null;
     calculatedAt: Date;
   } | null> {
-    const get = promisify(this.db.get.bind(this.db));
-    const row = await get('SELECT * FROM cycle_time_cache WHERE issue_key = ?', [issueKey]);
+    const get = promisify(this.db.get.bind(this.db)) as (sql: string, params: any[]) => Promise<any>;
+    const row = await get('SELECT * FROM cycle_time_cache WHERE issue_key = ?', [issueKey]) as any;
     
     if (!row) return null;
     
     return {
-      discoveryStartDate: row.discovery_start_date ? new Date(row.discovery_start_date) : null,
-      discoveryEndDate: row.discovery_end_date ? new Date(row.discovery_end_date) : null,
-      endDateLogic: row.end_date_logic,
-      calendarDaysInDiscovery: row.calendar_days_in_discovery,
-      completionQuarter: row.completion_quarter,
-      calculatedAt: new Date(row.calculated_at)
+      discoveryStartDate: row?.discovery_start_date ? new Date(row.discovery_start_date) : null,
+      discoveryEndDate: row?.discovery_end_date ? new Date(row.discovery_end_date) : null,
+      endDateLogic: row?.end_date_logic,
+      calendarDaysInDiscovery: row?.calendar_days_in_discovery,
+      completionQuarter: row?.completion_quarter,
+      calculatedAt: new Date(row?.calculated_at)
     };
   }
 
@@ -519,10 +519,10 @@ export class DatabaseService {
     completionQuarter: string | null;
     calculatedAt: Date;
   }>> {
-    const all = promisify(this.db.all.bind(this.db));
+    const all = promisify(this.db.all.bind(this.db)) as (sql: string) => Promise<any[]>;
     const rows = await all('SELECT * FROM cycle_time_cache ORDER BY calculated_at DESC');
     
-    return rows.map(row => ({
+    return rows.map((row: any) => ({
       issueKey: row.issue_key,
       discoveryStartDate: row.discovery_start_date ? new Date(row.discovery_start_date) : null,
       discoveryEndDate: row.discovery_end_date ? new Date(row.discovery_end_date) : null,
@@ -600,13 +600,13 @@ export class DatabaseService {
     calendarDaysInDiscovery: number;
     activeDaysInDiscovery: number;
   }>> {
-    const all = promisify(this.db.all.bind(this.db));
+    const all = promisify(this.db.all.bind(this.db)) as (sql: string, params: any[]) => Promise<any[]>;
     const rows = await all(
       'SELECT issue_key, summary, assignee, discovery_start_date, calendar_days_in_discovery, active_days_in_discovery FROM project_details_cache WHERE quarter = ? ORDER BY calendar_days_in_discovery DESC',
       [quarter]
     );
     
-    return rows.map(row => ({
+    return rows.map((row: any) => ({
       issueKey: row.issue_key,
       summary: row.summary,
       assignee: row.assignee,

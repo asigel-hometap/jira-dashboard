@@ -216,11 +216,8 @@ export async function getIssueChangelog(issueKey: string): Promise<JiraChangelog
 
   // Return the changelog in the expected format
   return {
-    values: allHistories,
-    total: allHistories.length,
-    isLast: true,
-    startAt: 0,
-    maxResults: allHistories.length
+    histories: allHistories,
+    values: allHistories
   };
 }
 

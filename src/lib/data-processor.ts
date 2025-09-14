@@ -1673,8 +1673,8 @@ export class DataProcessor {
       const allIssues = await dbService.getActiveIssues();
       
       // Extract unique values for each filter (force rebuild)
-      const assignees = [...new Set(allIssues.map(issue => issue.assignee).filter(Boolean))].sort();
-      const bizChamps = [...new Set(allIssues.map(issue => issue.bizChamp).filter(Boolean))].sort();
+      const assignees = [...new Set(allIssues.map(issue => issue.assignee).filter(Boolean))].sort() as string[];
+      const bizChamps = [...new Set(allIssues.map(issue => issue.bizChamp).filter(Boolean))].sort() as string[];
       
       return {
         assignees,

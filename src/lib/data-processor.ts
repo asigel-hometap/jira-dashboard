@@ -1181,9 +1181,9 @@ export class DataProcessor {
         console.log(`Filtered by assignee '${filters.assignee}': ${allIssues.length} issues`);
       }
       
+      // Note: Team filtering not implemented - no team data in current Issue type
       if (filters.team) {
-        allIssues = allIssues.filter(issue => issue.team === filters.team);
-        console.log(`Filtered by team '${filters.team}': ${allIssues.length} issues`);
+        console.log(`Team filtering requested but not implemented: '${filters.team}'`);
       }
       
       if (filters.bizChamp) {

@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initDatabase, getDbService } from '@/lib/database';
+import { initializeDatabase, getDatabaseService } from '@/lib/database-factory';
 
 export async function GET(request: NextRequest) {
   try {
     // Initialize database if not already done
-    await initDatabase();
+    await initializeDatabase();
     
     // Try to get real data context
     try {
-      const capacityData = await getDbService().getCapacityData();
+      const capacityData = await getDatabaseService().getCapacityData();
       const latestData = capacityData[capacityData.length - 1];
       
       if (latestData) {

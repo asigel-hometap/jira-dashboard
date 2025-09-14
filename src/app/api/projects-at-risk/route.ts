@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initDatabase, getDbService } from '@/lib/database';
+import { getDatabaseService } from '@/lib/database-factory';
 import { getDataProcessor } from '@/lib/data-processor';
 
 export async function GET(request: NextRequest) {
   try {
-    await initDatabase();
-    const dbService = getDbService();
+    await initializeDatabase();
+    const dbService = getDatabaseService();
     const dataProcessor = getDataProcessor();
     
     // Get projects that have been At Risk or Off Track for 2+ consecutive weeks

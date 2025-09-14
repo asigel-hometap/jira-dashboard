@@ -1,5 +1,5 @@
 import { JiraIssue, JiraChangelog, JiraUser, Issue, StatusTransition, HealthTransition, TeamMember, ProjectSnapshot, CapacityData, DISCOVERY_STATUSES, BUILD_STATUSES, DEPLOYED_STATUSES, INACTIVE_STATUSES, STATUSES, HEALTH_VALUES } from '@/types/jira';
-import { getDbService, getDatabase } from './database';
+import { getDatabaseService } from './database-factory';
 import { getAllIssues, getIssueChangelog, getAllUsers, rateLimiter } from './jira-api';
 import { parse } from 'csv-parse/sync';
 import { readFileSync } from 'fs';
@@ -13,7 +13,7 @@ export class DataProcessor {
     
     try {
       // Clear cycle time cache when processing fresh data
-      const dbService = getDbService();
+      const dbService = getDatabaseService();
       await dbService.clearCycleTimeCache();
       await dbService.clearProjectDetailsCache();
       console.log('Cleared cycle time cache for fresh data');
@@ -29,7 +29,7 @@ export class DataProcessor {
       // Process and store issues
       for (const jiraIssue of jiraIssues) {
         const issue = this.mapJiraIssueToIssue(jiraIssue);
-        await getDbService().insertIssue(issue);
+        await getDatabaseService().insertIssue(issue);
         
         // Process changelog for transitions
         await this.processIssueChangelog(jiraIssue.key);
@@ -70,7 +70,7 @@ export class DataProcessor {
               author: history.author.displayName,
               authorId: history.author.accountId
             };
-            await getDbService().insertStatusTransition(transition);
+            await getDatabaseService().insertStatusTransition(transition);
           }
           
           // Process health transitions
@@ -85,7 +85,7 @@ export class DataProcessor {
               author: history.author.displayName,
               authorId: history.author.accountId
             };
-            await getDbService().insertHealthTransition(transition);
+            await getDatabaseService().insertHealthTransition(transition);
           }
         }
       }
@@ -108,7 +108,7 @@ export class DataProcessor {
           displayName: jiraUser.displayName,
           avatarUrl: jiraUser.avatarUrls['48x48']
         };
-        await getDbService().insertTeamMember(member);
+        await getDatabaseService().insertTeamMember(member);
       }
       
       console.log(`Processed ${jiraUsers.length} team members`);
@@ -197,7 +197,7 @@ export class DataProcessor {
           continue;
         }
 
-        await getDbService().insertCapacityData(capacity);
+        await getDatabaseService().insertCapacityData(capacity);
       }
 
       console.log(`Loaded ${records.length} capacity data records`);
@@ -212,7 +212,7 @@ export class DataProcessor {
     try {
       console.log('Creating weekly snapshot...');
       const snapshotDate = new Date();
-      const activeIssues = await getDbService().getActiveIssues();
+      const activeIssues = await getDatabaseService().getActiveIssues();
 
       for (const issue of activeIssues) {
         const snapshot: ProjectSnapshot = {
@@ -225,7 +225,7 @@ export class DataProcessor {
           isActive: this.isIssueActive(issue)
         };
 
-        await getDbService().insertProjectSnapshot(snapshot);
+        await getDatabaseService().insertProjectSnapshot(snapshot);
       }
 
       console.log(`Created snapshot for ${activeIssues.length} issues`);
@@ -271,7 +271,7 @@ export class DataProcessor {
     activeDiscoveryCycleTime: number;
     calendarDiscoveryCycleTime: number;
   }> {
-    const statusTransitions = await getDbService().getStatusTransitions(issueKey);
+    const statusTransitions = await getDatabaseService().getStatusTransitions(issueKey);
     
     // Find first transition to discovery status
     const discoveryStartTransition = statusTransitions.find(t => 
@@ -319,7 +319,7 @@ export class DataProcessor {
 
   // Get workload data for team members
   async getWorkloadData(): Promise<any[]> {
-    const activeIssues = await getDbService().getActiveIssues();
+    const activeIssues = await getDatabaseService().getActiveIssues();
     
     // Map first names to full names based on the team
     const teamMemberMap = {
@@ -381,7 +381,7 @@ export class DataProcessor {
   // Get current data date context
   async getDataContext(): Promise<{ lastUpdated: Date; dataSource: string }> {
     // Get the most recent snapshot date
-    const snapshots = await getDbService().getProjectSnapshots();
+    const snapshots = await getDatabaseService().getProjectSnapshots();
     const lastSnapshot = snapshots.length > 0 ? snapshots[0] : null;
     
     return {
@@ -400,7 +400,7 @@ export class DataProcessor {
     complete: number;
     unknown: number;
   }> {
-    const dbService = getDbService();
+    const dbService = getDatabaseService();
     const issues = await dbService.getActiveIssues();
     
     // Filter issues by assignee
@@ -878,7 +878,7 @@ export class DataProcessor {
     };
   }> {
     try {
-      const dbService = getDbService();
+      const dbService = getDatabaseService();
       
       // First, try to get cached data
       const cachedData = await dbService.getAllCycleTimeCache();
@@ -1169,7 +1169,7 @@ export class DataProcessor {
     };
   }>> {
     try {
-      const dbService = getDbService();
+      const dbService = getDatabaseService();
       
       // Get all issues with their current state
       let allIssues = await dbService.getActiveIssues();
@@ -1669,7 +1669,7 @@ export class DataProcessor {
     bizChamps: string[];
   }> {
     try {
-      const dbService = getDbService();
+      const dbService = getDatabaseService();
       const allIssues = await dbService.getActiveIssues();
       
       // Extract unique values for each filter (force rebuild)

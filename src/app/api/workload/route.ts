@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initDatabase, getDbService } from '@/lib/database';
+import { initializeDatabase, getDatabaseService } from '@/lib/database-factory';
 import { getDataProcessor } from '@/lib/data-processor';
 
 export async function GET(request: NextRequest) {
   try {
     // Initialize database if not already done
-    await initDatabase();
+    await initializeDatabase();
     
     // Try to get real data from capacity tracking
     try {
-      const capacityData = await getDbService().getCapacityData();
+      const capacityData = await getDatabaseService().getCapacityData();
       // Look for 9/8/2025 data specifically, or fall back to latest
       const targetData = capacityData.find(d => d.date.toISOString().startsWith('2025-09-08')) || capacityData[capacityData.length - 1];
       

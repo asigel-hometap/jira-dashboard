@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initDatabase, getDbService } from '@/lib/database';
+import { getDatabaseService } from '@/lib/database-factory';
 
 export async function POST(request: NextRequest) {
   try {
     // Initialize database first
-    await initDatabase();
-    const dbService = getDbService();
+    await initializeDatabase();
+    const dbService = getDatabaseService();
     await dbService.clearCycleTimeCache();
     
     return NextResponse.json({ 

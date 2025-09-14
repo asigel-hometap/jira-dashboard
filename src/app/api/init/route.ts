@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initDatabase, createTables } from '@/lib/database';
+import { initializeDatabase } from '@/lib/database-factory';
 import { getDataProcessor } from '@/lib/data-processor';
 
 export async function POST(request: NextRequest) {
   try {
     console.log('Initializing database and loading data...');
     
-    // Initialize database
-    await initDatabase();
-    await createTables();
+    // Initialize database (Postgres or SQLite based on environment)
+    await initializeDatabase();
     
     // Get data processor instance
     const dataProcessor = getDataProcessor();

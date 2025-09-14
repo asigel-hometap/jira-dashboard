@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initDatabase, getDbService } from '@/lib/database';
+import { getDatabaseService } from '@/lib/database-factory';
 
 export async function GET(request: NextRequest) {
   try {
     // Initialize database if not already done
-    await initDatabase();
+    await initializeDatabase();
     
     // Get all capacity data
-    const capacityData = await getDbService().getCapacityData();
+    const capacityData = await getDatabaseService().getCapacityData();
     
     // Transform data for sparklines
     const trendsData = {

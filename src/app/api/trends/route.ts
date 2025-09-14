@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initDatabase, getDbService } from '@/lib/database';
+import { getDatabaseService } from '@/lib/database-factory';
 import { getDataProcessor } from '@/lib/data-processor';
 
 export async function GET(request: NextRequest) {
   try {
-    await initDatabase();
+    await initializeDatabase();
     const dataProcessor = getDataProcessor();
     
     // Extract filter parameters

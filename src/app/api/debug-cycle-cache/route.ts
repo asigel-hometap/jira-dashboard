@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabaseService } from '@/lib/database-factory';
-import { initDatabase } from '@/lib/database';
 
 export async function GET(request: NextRequest) {
   try {
-    await initDatabase();
     const dbService = getDatabaseService();
     
     // Get cycle time cache data

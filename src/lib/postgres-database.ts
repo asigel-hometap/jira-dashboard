@@ -465,7 +465,14 @@ export class PostgresDatabaseService {
   }
 
   // Cycle time cache methods
-  async insertCycleTimeCache(cache: any): Promise<void> {
+  async insertCycleTimeCache(issueKey: string, cycleInfo: {
+    discoveryStartDate: Date | null;
+    discoveryEndDate: Date | null;
+    endDateLogic: string;
+    calendarDaysInDiscovery: number | null;
+    activeDaysInDiscovery: number | null;
+    completionQuarter: string | null;
+  }): Promise<void> {
     const client = await this.pool.connect();
     try {
       await client.query(`
@@ -482,8 +489,14 @@ export class PostgresDatabaseService {
           completion_quarter = EXCLUDED.completion_quarter,
           calculated_at = EXCLUDED.calculated_at
       `, [
-        cache.issueKey, cache.discoveryStartDate, cache.discoveryEndDate, cache.endDateLogic,
-        cache.calendarDaysInDiscovery, cache.activeDaysInDiscovery, cache.completionQuarter, cache.calculatedAt
+        issueKey, 
+        cycleInfo.discoveryStartDate?.toISOString() || null, 
+        cycleInfo.discoveryEndDate?.toISOString() || null, 
+        cycleInfo.endDateLogic,
+        cycleInfo.calendarDaysInDiscovery, 
+        cycleInfo.activeDaysInDiscovery, 
+        cycleInfo.completionQuarter, 
+        new Date().toISOString()
       ]);
     } finally {
       client.release();

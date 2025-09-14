@@ -902,8 +902,7 @@ export class DataProcessor {
               cached.endDateLogic !== 'Still in Discovery' &&
               cached.endDateLogic !== 'No Discovery' &&
               cached.endDateLogic !== 'Direct to Build' &&
-              cached.completionQuarter &&
-              ['Q1_2025', 'Q2_2025', 'Q3_2025'].includes(cached.completionQuarter)) {
+              cached.completionQuarter) {
             
             completedCycles.push({
               key: cached.issueKey,
@@ -975,8 +974,8 @@ export class DataProcessor {
             cycleInfo.endDateLogic !== 'No Discovery' &&
             cycleInfo.endDateLogic !== 'Direct to Build') {
           
-          // Only include Q1, Q2, Q3 2025
-          if (['Q1_2025', 'Q2_2025', 'Q3_2025'].includes(quarter || '')) {
+          // Include all quarters, not just 2025
+          if (quarter) {
             const cycleTimeDays = timeType === 'active' 
               ? (cycleInfo.activeDaysInDiscovery || 0)
               : (cycleInfo.calendarDaysInDiscovery || 0);
@@ -1032,7 +1031,9 @@ export class DataProcessor {
   } {
     // Group by quarter and calculate statistics
     const cohorts: any = {};
-    const quarters = ['Q1_2025', 'Q2_2025', 'Q3_2025'];
+    // Get all unique quarters from the data
+    const allQuarters = [...new Set(completedCycles.map(cycle => cycle.completionQuarter))].sort();
+    const quarters = allQuarters.length > 0 ? allQuarters : ['Q1_2025', 'Q2_2025', 'Q3_2025'];
     
     for (const quarter of quarters) {
       const quarterData = completedCycles
@@ -1068,7 +1069,7 @@ export class DataProcessor {
   /**
    * Get quarter string from date (Q1_2025, Q2_2025, etc.)
    */
-  private getQuarterFromDate(date: Date): string {
+  getQuarterFromDate(date: Date): string {
     const year = date.getFullYear();
     const month = date.getMonth() + 1; // 0-indexed
     

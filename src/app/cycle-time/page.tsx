@@ -45,7 +45,10 @@ export default function CycleTimePage() {
   const fetchCycleTimeData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/cycle-time-analysis?timeType=${timeType}`);
+      const baseUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app'
+        : '';
+      const response = await fetch(`${baseUrl}/api/cycle-time-analysis?timeType=${timeType}`);
       const result = await response.json();
       
       if (result.success) {
@@ -70,7 +73,10 @@ export default function CycleTimePage() {
       setDetailsLoading(true);
       setSelectedQuarter(quarter);
       
-      const response = await fetch(`/api/cycle-time-details?quarter=${quarter}`);
+      const baseUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app'
+        : '';
+      const response = await fetch(`${baseUrl}/api/cycle-time-details?quarter=${quarter}`);
       const result = await response.json();
       
       if (result.success) {

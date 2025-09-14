@@ -237,7 +237,7 @@ export async function searchIssues(jql: string, fields?: string[]): Promise<Jira
   const fieldsParam = fields ? `&fields=${fields.join(',')}` : '';
 
   while (hasMore) {
-    const endpoint = `/search?jql=${encodeURIComponent(jql)}&startAt=${startAt}&maxResults=${maxResults}${fieldsParam}`;
+    const endpoint = `/search/jql?jql=${encodeURIComponent(jql)}&startAt=${startAt}&maxResults=${maxResults}${fieldsParam}`;
     const response = await jiraRequest<{
       issues: JiraIssue[];
       total: number;

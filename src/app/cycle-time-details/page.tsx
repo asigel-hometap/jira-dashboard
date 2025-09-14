@@ -36,7 +36,10 @@ export default function CycleTimeDetailsPage() {
   const fetchDiscoveryDetails = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/discovery-cycle-details');
+      const baseUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app'
+        : '';
+      const response = await fetch(`${baseUrl}/api/discovery-cycle-details`);
       const result = await response.json();
       
       if (result.success) {

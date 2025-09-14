@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDatabaseService } from '@/lib/database-factory';
+import { initializeDatabase, getDatabaseService } from '@/lib/database-factory';
 import { getDataProcessor } from '@/lib/data-processor';
 import { getAllIssuesForCycleAnalysis } from '@/lib/jira-api';
 

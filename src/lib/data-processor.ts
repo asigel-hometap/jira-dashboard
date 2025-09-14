@@ -926,6 +926,10 @@ export class DataProcessor {
       const allIssues = await getAllIssuesForCycleAnalysis();
       console.log(`Fetched ${allIssues.length} total projects for cycle analysis`);
       
+      // Limit to recent issues to avoid timeout (last 100 issues)
+      const recentIssues = allIssues.slice(0, 100);
+      console.log(`Processing only ${recentIssues.length} recent issues to avoid timeout`);
+      
       const completedCycles: Array<{
         key: string;
         discoveryStartDate: Date;
@@ -937,11 +941,11 @@ export class DataProcessor {
       // Process each issue to find completed discovery cycles
       let processedCount = 0;
       let completedCount = 0;
-      const totalIssues = allIssues.length;
+      const totalIssues = recentIssues.length;
       
       console.log(`Processing ${totalIssues} projects for cycle time analysis...`);
       
-      for (const issue of allIssues) {
+      for (const issue of recentIssues) {
         processedCount++;
         
         // Log progress every 50 projects

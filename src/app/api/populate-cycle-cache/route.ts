@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDataProcessor } from '@/lib/data-processor';
-import { initDatabase } from '@/lib/database';
+import { getDatabaseService, initializeDatabase } from '@/lib/database-factory';
 
 export async function POST(request: NextRequest) {
   try {
-    await initDatabase();
+    await initializeDatabase();
     const dataProcessor = getDataProcessor();
     
     console.log('Starting cycle time cache population...');

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDataProcessor } from '@/lib/data-processor';
-import { initDatabase } from '@/lib/database';
+import { getDatabaseService, initializeDatabase } from '@/lib/database-factory';
 
 export async function GET(request: NextRequest) {
   try {
-    await initDatabase();
+    await initializeDatabase();
     const dataProcessor = getDataProcessor();
     
     const { searchParams } = new URL(request.url);

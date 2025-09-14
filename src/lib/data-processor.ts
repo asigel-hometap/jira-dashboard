@@ -881,7 +881,7 @@ export class DataProcessor {
       const dbService = getDatabaseService();
       
       // First, try to get cached data
-      const cachedData = await dbService.getAllCycleTimeCache();
+      const cachedData = await dbService.getCycleTimeCache();
       
       if (cachedData.length > 0) {
         console.log(`Using cached cycle time data for ${cachedData.length} projects`);

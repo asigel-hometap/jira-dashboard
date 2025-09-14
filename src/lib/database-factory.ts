@@ -2,7 +2,7 @@ import { getDbService } from './database'; // SQLite service
 import { getPostgresDbService } from './postgres-database'; // Postgres service
 
 // Environment variable to control which database to use
-const USE_POSTGRES = process.env.USE_POSTGRES === 'true' || process.env.POSTGRES_URL;
+const USE_POSTGRES = process.env.USE_POSTGRES === 'true' && process.env.POSTGRES_URL;
 
 // Factory function to get the appropriate database service
 export function getDatabaseService() {

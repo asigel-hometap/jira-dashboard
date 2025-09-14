@@ -14,7 +14,7 @@ interface DataContext {
 
 export default function Home() {
   const [workloadData, setWorkloadData] = useState<WorkloadData[]>([]);
-  const [trendsData, setTrendsData] = useState<any>(null);
+  const [trendsData, setTrendsData] = useState<Record<string, number[]> | null>(null);
   const [dataContext, setDataContext] = useState<DataContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

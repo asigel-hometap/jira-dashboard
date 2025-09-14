@@ -595,7 +595,6 @@ export class PostgresDatabaseService {
   // Helper methods to map database rows to objects
   private mapRowToStatusTransition(row: any): StatusTransition {
     return {
-      id: row.id.toString(),
       issueKey: row.issue_key,
       fromStatus: row.from_status,
       toStatus: row.to_status,
@@ -609,7 +608,6 @@ export class PostgresDatabaseService {
 
   private mapRowToHealthTransition(row: any): HealthTransition {
     return {
-      id: row.id.toString(),
       issueKey: row.issue_key,
       fromHealth: row.from_health,
       toHealth: row.to_health,
@@ -645,7 +643,6 @@ export class PostgresDatabaseService {
 
   private mapRowToCapacityData(row: any): CapacityData {
     return {
-      id: row.id.toString(),
       date: new Date(row.date),
       adam: row.adam,
       jennie: row.jennie,

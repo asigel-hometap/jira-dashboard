@@ -143,13 +143,21 @@ export default function Home() {
                 Source: {dataContext.dataSource}
               </p>
             </div>
-            <button
-              onClick={fetchWorkloadData}
-              disabled={loading}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-            >
-              {loading ? 'Refreshing...' : 'Refresh Data'}
-            </button>
+            <div className="flex space-x-2">
+              <button
+                onClick={fetchWorkloadData}
+                disabled={loading}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+              >
+                {loading ? 'Refreshing...' : 'Refresh Data'}
+              </button>
+              <a 
+                href="/cache-management" 
+                className="bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors"
+              >
+                Cache Management
+              </a>
+            </div>
           </div>
         </div>
       )}

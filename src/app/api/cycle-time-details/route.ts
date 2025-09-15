@@ -36,44 +36,78 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // If no cached data, calculate and cache it
-    console.log(`No cached data for ${quarter}, calculating...`);
-    const dataProcessor = getDataProcessor();
-    const { getAllIssuesForCycleAnalysis } = await import('@/lib/jira-api');
-    const allIssues = await getAllIssuesForCycleAnalysis();
+    // If no cached data, use cycle time cache to build project details
+    console.log(`No cached data for ${quarter}, using cycle time cache...`);
+    
+    // Get all cached cycle time data
+    const cycleTimeCache = await dbService.getCycleTimeCache();
     
     // Filter for completed discovery cycles in the specified quarter
     const completedProjects = [];
     
-    for (const issue of allIssues) {
-      const cycleInfo = await dataProcessor.calculateDiscoveryCycleInfo(issue.key);
-      
-      // Check if this is a completed discovery cycle
-      if (cycleInfo.discoveryStartDate && 
-          cycleInfo.discoveryEndDate && 
-          cycleInfo.endDateLogic !== 'Still in Discovery' &&
-          cycleInfo.endDateLogic !== 'No Discovery' &&
-          cycleInfo.endDateLogic !== 'Direct to Build') {
+    for (const cached of cycleTimeCache) {
+      // Check if this is a completed discovery cycle in the specified quarter
+      if (cached.discoveryStartDate && 
+          cached.discoveryEndDate && 
+          cached.endDateLogic !== 'Still in Discovery' &&
+          cached.endDateLogic !== 'No Discovery' &&
+          cached.endDateLogic !== 'Direct to Build' &&
+          cached.completionQuarter === quarter) {
         
-        // Check if completion quarter matches
-        const completionDate = cycleInfo.discoveryEndDate;
-        const completionQuarter = getQuarterFromDate(completionDate);
-        
-        if (completionQuarter === quarter) {
-          completedProjects.push({
-            issueKey: issue.key,
-            summary: issue.fields.summary,
-            assignee: issue.fields.assignee?.displayName || 'Unassigned',
-            discoveryStartDate: cycleInfo.discoveryStartDate.toISOString().split('T')[0],
-            calendarDaysInDiscovery: cycleInfo.calendarDaysInDiscovery || 0,
-            activeDaysInDiscovery: cycleInfo.activeDaysInDiscovery || 0
-          });
+        // Try to get issue details from database first
+        let issue = null;
+        try {
+          issue = await dbService.getIssueByKey(cached.issueKey);
+        } catch (error) {
+          // Issue not in database, that's okay
+          console.log(`Issue ${cached.issueKey} not found in database, using fallback data`);
         }
+        
+        // If not in database, try to get from Jira API for better data
+        let summary = issue?.summary || `Project ${cached.issueKey}`;
+        let assignee = issue?.assignee || 'Unknown';
+        
+        if (!issue) {
+          try {
+            // Import Jira API function
+            const { getAllIssuesForCycleAnalysis } = await import('@/lib/jira-api');
+            const allIssues = await getAllIssuesForCycleAnalysis();
+            const jiraIssue = allIssues.find(i => i.key === cached.issueKey);
+            
+            if (jiraIssue) {
+              summary = jiraIssue.fields.summary;
+              assignee = jiraIssue.fields.assignee?.displayName || 'Unknown';
+              console.log(`Found Jira data for ${cached.issueKey}: ${summary}`);
+            }
+          } catch (error) {
+            console.log(`Could not fetch Jira data for ${cached.issueKey}:`, error);
+          }
+        }
+        
+        completedProjects.push({
+          issueKey: cached.issueKey,
+          summary: summary,
+          assignee: assignee,
+          discoveryStartDate: cached.discoveryStartDate.toISOString().split('T')[0],
+          calendarDaysInDiscovery: cached.calendarDaysInDiscovery || 0,
+          activeDaysInDiscovery: cached.activeDaysInDiscovery || 0
+        });
       }
     }
 
     // Cache the results
-    await dbService.insertProjectDetailsCache(quarter, completedProjects);
+    for (const project of completedProjects) {
+      await dbService.insertProjectDetailsCache({
+        quarter,
+        issueKey: project.issueKey,
+        summary: project.summary,
+        assignee: project.assignee,
+        discoveryStartDate: project.discoveryStartDate,
+        calendarDaysInDiscovery: project.calendarDaysInDiscovery,
+        activeDaysInDiscovery: project.activeDaysInDiscovery,
+        calculatedAt: new Date().toISOString()
+      });
+    }
     console.log(`Cached ${completedProjects.length} projects for ${quarter}`);
 
     return NextResponse.json({

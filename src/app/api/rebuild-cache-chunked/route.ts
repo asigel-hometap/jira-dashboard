@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDataProcessor } from '@/lib/data-processor';
 import { getDatabaseService } from '@/lib/database-factory';
+import { getAllIssuesForCycleAnalysis } from '@/lib/jira-api';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,9 +14,11 @@ export async function POST(request: NextRequest) {
     
     console.log(`Processing chunk: start=${startIndex}, size=${chunkSize}`);
     
-    // Get issues for this chunk
-    const allIssues = await dbService.getActiveIssues();
+    // Get ALL issues from Jira API for cycle analysis
+    const allIssues = await getAllIssuesForCycleAnalysis();
     const chunkIssues = allIssues.slice(startIndex, startIndex + chunkSize);
+    
+    console.log(`Total issues available: ${allIssues.length}, processing chunk: ${chunkIssues.length}`);
     
     if (chunkIssues.length === 0) {
       return NextResponse.json({

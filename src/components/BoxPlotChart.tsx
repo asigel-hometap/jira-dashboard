@@ -63,7 +63,20 @@ export default function BoxPlotChart({ data, unit }: BoxPlotChartProps) {
     // Clear canvas
     ctx.clearRect(0, 0, dimensions.width, dimensions.height);
 
-    const quarters = Object.keys(data.cohorts).sort();
+    const quarters = Object.keys(data.cohorts).sort((a, b) => {
+      // Sort quarters chronologically (Q3_2024, Q4_2024, Q1_2025, Q2_2025, Q3_2025, etc.)
+      const [qA, yearA] = a.split('_');
+      const [qB, yearB] = b.split('_');
+      
+      // Compare years first
+      if (yearA !== yearB) {
+        return parseInt(yearA) - parseInt(yearB);
+      }
+      
+      // If same year, compare quarters
+      const quarterOrder = { 'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4 };
+      return quarterOrder[qA as keyof typeof quarterOrder] - quarterOrder[qB as keyof typeof quarterOrder];
+    });
     if (quarters.length === 0) return;
 
     // Chart dimensions - increased margins for better spacing
@@ -244,7 +257,20 @@ export default function BoxPlotChart({ data, unit }: BoxPlotChartProps) {
     setMousePosition({ x, y });
     
     // Check if mouse is over a box plot
-    const quarters = Object.keys(data.cohorts).sort();
+    const quarters = Object.keys(data.cohorts).sort((a, b) => {
+      // Sort quarters chronologically (Q3_2024, Q4_2024, Q1_2025, Q2_2025, Q3_2025, etc.)
+      const [qA, yearA] = a.split('_');
+      const [qB, yearB] = b.split('_');
+      
+      // Compare years first
+      if (yearA !== yearB) {
+        return parseInt(yearA) - parseInt(yearB);
+      }
+      
+      // If same year, compare quarters
+      const quarterOrder = { 'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4 };
+      return quarterOrder[qA as keyof typeof quarterOrder] - quarterOrder[qB as keyof typeof quarterOrder];
+    });
     const margin = { top: 60, right: 60, bottom: 100, left: 100 };
     const chartWidth = dimensions.width - margin.left - margin.right;
     const chartHeight = dimensions.height - margin.top - margin.bottom;

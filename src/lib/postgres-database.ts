@@ -77,8 +77,8 @@ export async function createPostgresTables(): Promise<void> {
         timestamp TIMESTAMP NOT NULL,
         author VARCHAR(255) NOT NULL,
         author_id VARCHAR(255) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (issue_key) REFERENCES issues(key)
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        -- FOREIGN KEY (issue_key) REFERENCES issues(key) -- Removed to allow processing directly from Jira API
       )
     `);
 
@@ -94,8 +94,8 @@ export async function createPostgresTables(): Promise<void> {
         timestamp TIMESTAMP NOT NULL,
         author VARCHAR(255) NOT NULL,
         author_id VARCHAR(255) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (issue_key) REFERENCES issues(key)
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        -- FOREIGN KEY (issue_key) REFERENCES issues(key) -- Removed to allow processing directly from Jira API
       )
     `);
 
@@ -123,7 +123,7 @@ export async function createPostgresTables(): Promise<void> {
         assignee VARCHAR(255),
         is_active BOOLEAN NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (issue_key) REFERENCES issues(key),
+        -- FOREIGN KEY (issue_key) REFERENCES issues(key) -- Removed to allow processing directly from Jira API
         UNIQUE(snapshot_date, issue_key)
       )
     `);
@@ -157,8 +157,19 @@ export async function createPostgresTables(): Promise<void> {
         calendar_days_in_discovery INTEGER,
         active_days_in_discovery INTEGER,
         completion_quarter VARCHAR(255),
-        calculated_at VARCHAR(255) NOT NULL,
-        FOREIGN KEY (issue_key) REFERENCES issues(key)
+        calculated_at VARCHAR(255) NOT NULL
+        -- FOREIGN KEY (issue_key) REFERENCES issues(key) -- Removed to allow processing directly from Jira API
+      )
+    `);
+
+    // Project exclusions table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS project_exclusions (
+        id SERIAL PRIMARY KEY,
+        issue_key VARCHAR(255) NOT NULL UNIQUE,
+        excluded_by VARCHAR(255) NOT NULL,
+        exclusion_reason TEXT,
+        excluded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -266,6 +277,22 @@ export class PostgresDatabaseService {
         issue.created, issue.updated, issue.duedate, issue.priority,
         issue.labels, issue.bizChamp, issue.bizChampId, issue.isArchived
       ]);
+    } finally {
+      client.release();
+    }
+  }
+
+  async getIssueByKey(issueKey: string): Promise<Issue | null> {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(
+        'SELECT * FROM issues WHERE key = $1',
+        [issueKey]
+      );
+      if (result.rows.length === 0) {
+        return null;
+      }
+      return this.mapRowToIssue(result.rows[0]);
     } finally {
       client.release();
     }
@@ -607,6 +634,61 @@ export class PostgresDatabaseService {
     const client = await this.pool.connect();
     try {
       await client.query('DELETE FROM project_details_cache');
+    } finally {
+      client.release();
+    }
+  }
+
+  // Project exclusions methods
+  async getExcludedIssues(): Promise<string[]> {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query('SELECT issue_key FROM project_exclusions');
+      return result.rows.map((row: any) => row.issue_key);
+    } finally {
+      client.release();
+    }
+  }
+
+  async addExclusion(issueKey: string, excludedBy: string, reason?: string): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query(
+        'INSERT INTO project_exclusions (issue_key, excluded_by, exclusion_reason) VALUES ($1, $2, $3) ON CONFLICT (issue_key) DO NOTHING',
+        [issueKey, excludedBy, reason]
+      );
+    } finally {
+      client.release();
+    }
+  }
+
+  async removeExclusion(issueKey: string): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('DELETE FROM project_exclusions WHERE issue_key = $1', [issueKey]);
+    } finally {
+      client.release();
+    }
+  }
+
+  async toggleExclusion(issueKey: string, excludedBy: string, reason?: string): Promise<boolean> {
+    const client = await this.pool.connect();
+    try {
+      // Check if already excluded
+      const checkResult = await client.query('SELECT id FROM project_exclusions WHERE issue_key = $1', [issueKey]);
+      
+      if (checkResult.rows.length > 0) {
+        // Remove exclusion
+        await client.query('DELETE FROM project_exclusions WHERE issue_key = $1', [issueKey]);
+        return false; // Now included
+      } else {
+        // Add exclusion
+        await client.query(
+          'INSERT INTO project_exclusions (issue_key, excluded_by, exclusion_reason) VALUES ($1, $2, $3)',
+          [issueKey, excludedBy, reason]
+        );
+        return true; // Now excluded
+      }
     } finally {
       client.release();
     }

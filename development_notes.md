@@ -1,5 +1,7 @@
 # Jira Dashboard - Development Notes
 
+> **Note**: All timestamps in this document use format `YYYY-MM-DD HH:MM` (24-hour format) to track when information was discovered or updated.
+
 ## Project Overview
 A Next.js dashboard for monitoring team member workload, tracking discovery cycle time trends, and identifying projects needing investigation or remediation.
 
@@ -111,7 +113,7 @@ A Next.js dashboard for monitoring team member workload, tracking discovery cycl
 
 ### Dashboard Features
 - [ ] **Projects At Risk section** - Table showing projects needing attention
-- [ ] **Cycle Time Analysis** - Box-and-whisker charts for discovery cycle times
+- [ ] **Cycle Time Analysis** - Box-and-whisker charts for er version  times
 - [ ] **Trends Over Time** - Stacked bar charts for historical analysis
 - [ ] **Cycle Time Details** - Detailed table with specific metrics
 - [ ] **Manual refresh button** - Allow users to trigger data updates
@@ -211,26 +213,172 @@ npm run init-db
 - **Database Methods**: Added `insertProjectDetailsCache()`, `getProjectDetailsCache()`, `clearProjectDetailsCache()`
 - **Current Status**: API endpoint created but experiencing 500 errors during testing
 
-## Current Testing Status (End of Session)
+## Production Deployment & Cache Management (Latest Session)
 
-### 🔍 **Immediate Issues to Debug**
-1. **API 500 Error**: `/api/cycle-time-details` endpoint returning 500 Internal Server Error
-   - **Symptom**: Console shows "Failed to fetch cycle time details" when clicking summary cards
-   - **Likely Cause**: Database table creation or SQL query issues in new caching logic
-   - **Files to Check**: `src/app/api/cycle-time-details/route.ts`, `src/lib/database.ts`
+### ✅ **Production Deployment Success**
+- **Vercel Deployment**: Successfully deployed to `jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app`
+- **Database Migration**: Migrated from SQLite to PostgreSQL for production persistence
+- **Environment Variables**: Properly configured Jira API credentials and database connection
+- **Frontend Fixes**: Fixed API calls to use absolute URLs in production environment
+
+### 🔧 **API Route Issues Resolved**
+- **Problem**: New API endpoints (`debug-cycle-cache`, `rebuild-cache-chunked`, etc.) returning 404 errors
+- **Root Cause**: API routes were importing `initDatabase` from `@/lib/database` instead of using database factory pattern
+- **Solution**: Updated all API routes to use `initializeDatabase` from `@/lib/database-factory`
+- **Files Fixed**: `src/app/api/cycle-time-analysis/route.ts`, `src/app/api/populate-cycle-cache/route.ts`
+
+### 📊 **Current Production Status**
+- ✅ **Team Workload**: Shows active projects and health breakdowns (Adam: 3 projects, Jennie: 7 projects, Jacqueline: 6 projects)
+- ✅ **Projects At Risk**: Lists projects needing attention with proper health tracking
+- ✅ **Trends Over Time**: Historical analysis with stacked bar charts working
+- ✅ **Cycle Time Analysis**: Box-and-whisker analysis showing Q3 2025 data (3 completed projects)
+- ✅ **Cycle Time Details**: Detailed table with project information
+- ⚠️ **Cache Population**: Only Q3 2025 data currently cached, Q1/Q2 2025 showing empty
+
+### 🎯 **Next Steps for Cache Repopulation**
+
+#### **Immediate Actions Needed**
+1. **Test Cache Rebuild Endpoints**: Verify that `/api/rebuild-cache-chunked` and `/api/populate-cache-simple` are working after API route fixes
+2. **Chunked Cache Population**: Use chunked approach to populate cycle time cache for all quarters without hitting Vercel timeout limits
+
+3. **Verify Data Completeness**: Ensure all quarters (Q1, Q2, Q3 2025) have complete cycle time data
+
+#### **Cache Rebuild Strategy**
+```bash
+# Test endpoints are working
+curl "https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app/api/cycle-time-analysis"
+
+# Populate cache in small chunks (5 projects at a time)
+curl -X POST "https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app/api/rebuild-cache-chunked?chunkSize=5&startIndex=0"
+curl -X POST "https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app/api/rebuild-cache-chunked?chunkSize=5&startIndex=5"
+# Continue until all projects processed...
+```
+
+#### **Expected Results After Cache Rebuild**
+- **Q1 2025**: Should show ~31 completed projects with discovery cycle times
+- **Q2 2025**: Should show ~30 completed projects with discovery cycle times  
+- **Q3 2025**: Already showing 3 projects (current data)
+- **Total**: All quarters should display proper box-and-whisker charts
+
+### 🔍 **Technical Learnings from Production Deployment**
+
+#### **Database Factory Pattern**
+- **Issue**: API routes were using direct database imports instead of factory pattern
+- **Impact**: Caused 404 errors for new endpoints in production
+- **Solution**: All API routes must use `getDatabaseService()` and `initializeDatabase()` from factory
+- **Files Affected**: All new API routes created for cache management
+
+#### **Environment Variable Handling**
+- **Production**: Uses PostgreSQL with `POSTGRES_URL` environment variable
+- **Local Development**: Falls back to SQLite when `POSTGRES_URL` not available
+- **Database Selection**: Controlled by `USE_POSTGRES` flag in environment variables
+
+#### **Frontend API Calls**
+- **Development**: Uses relative URLs (`/api/workload`)
+- **Production**: Must use absolute URLs with full Vercel domain
+- **Implementation**: Conditional logic based on `process.env.NODE_ENV`
 
 ### 🚀 **Performance Optimization Status**
-- **Caching System**: Implemented but not yet working due to API errors
-- **Expected Behavior**: First click takes 2-3 minutes, subsequent clicks should be instant
-- **Database Tables**: `project_details_cache` table created and initialized
-- **Next Steps**: Debug API errors, test caching performance
+- **Caching System**: Implemented and working for cycle time analysis
+- **Database**: PostgreSQL providing better performance than SQLite
+- **API Routes**: All major endpoints working in production
+- **Next Phase**: Focus on trends API performance optimization (currently takes 10+ minutes)
 
-### 📊 **Working Features**
-- ✅ **Cycle Time Analysis Chart**: Fully functional with proper box plots
-- ✅ **Summary Cards**: Display correct statistics (31, 30, 34 projects)
-- ✅ **Interactive Tooltips**: Hover functionality working
-- ✅ **Unit Toggle**: Days/weeks conversion working
-- ❌ **Project Details Table**: Not working due to API errors
+### 🔄 **Current Cache Status & Immediate Next Steps**
+
+#### **Cache Population Status** *(Updated: 2025-09-14 19:45)*
+- **Q3 2025**: ✅ **3 projects cached** - Box plot displaying correctly
+- **Q2 2025**: ❌ **0 projects cached** - Empty cohort showing "n=0"
+- **Q1 2025**: ❌ **0 projects cached** - Empty cohort showing "n=0"
+- **Total Expected**: ~64 projects across all quarters (31 + 30 + 3)
+
+#### **Root Cause Identified** *(2025-09-14 19:45)*
+- **Jira API Working Perfectly**: Direct testing shows 519 total issues available
+- **Application Bug**: Chunked cache rebuild was using `getActiveIssues()` (50 projects) instead of `getAllIssuesForCycleAnalysis()` (519 projects)
+- **Data Source Mismatch**: Cycle time analysis needs ALL historical projects, not just active ones
+- **Fix Applied**: Updated `rebuild-cache-chunked` endpoint to use Jira API directly
+
+#### **Immediate Action Plan**
+1. **Test Fixed API Endpoints** (After Vercel redeployment):
+   ```bash
+   # Test cycle time analysis API
+   curl "https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app/api/cycle-time-analysis"
+   
+   # Test chunked cache rebuild
+   curl -X POST "https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app/api/rebuild-cache-chunked?chunkSize=5&startIndex=0"
+   ```
+
+2. **Populate Missing Quarters** (If endpoints working):
+   - Run chunked cache rebuild for all projects
+   - Process in batches of 5-10 projects to avoid timeouts
+   - Monitor progress and verify data appears in dashboard
+
+3. **Verify Complete Data**:
+   - Check that all quarters show proper project counts
+   - Verify box plots display for Q1 and Q2 2025
+   - Test project details table functionality
+
+#### **Expected Timeline**
+- **API Testing**: 5-10 minutes
+- **Cache Population**: 15-30 minutes (depending on project count)
+- **Verification**: 5-10 minutes
+- **Total**: ~30-50 minutes to fully populate cache
+
+#### **Fallback Strategy** (If API endpoints still not working)
+- **Manual Database Population**: Use local development environment to populate cache
+- **Database Export/Import**: Export populated cache from local SQLite to production PostgreSQL
+- **Alternative Approach**: Modify existing working endpoints to trigger cache population
+
+## Jira API Investigation & Resolution *(2025-09-14 19:45)*
+
+### 🔍 **Problem Investigation**
+- **Symptom**: Only 50 projects being processed instead of expected 519+ projects
+- **Initial Hypothesis**: Jira API pagination issue or authentication problem
+- **Testing Method**: Created direct Node.js script to test Jira API outside Next.js context
+
+### ✅ **Key Findings**
+1. **Jira API Working Perfectly**: 
+   - Direct API test returned 519 total issues across 6 pages
+   - Pagination working correctly with `nextPageToken`
+   - Authentication and JQL queries functioning properly
+   - Issues range from HT-1 to HT-541 (complete dataset)
+
+2. **Application Bug Identified**:
+   - `getAllIssuesForCycleAnalysis()` returns 519 issues when called directly
+   - Chunked cache rebuild was using `dbService.getActiveIssues()` instead
+   - `getActiveIssues()` only returns 50 active projects from database
+   - Data source mismatch: cycle analysis needs ALL projects, not just active ones
+
+3. **Root Cause**:
+   - Chunked cache rebuild endpoint was designed for active projects only
+   - Cycle time analysis requires historical data from completed projects
+   - Database only contains current active projects, not historical data
+
+### 🔧 **Fix Applied**
+1. **Updated `rebuild-cache-chunked` endpoint**:
+   - Changed from `dbService.getActiveIssues()` to `getAllIssuesForCycleAnalysis()`
+   - Now processes all 519 projects from Jira API
+   - Added logging to show total issues available
+
+2. **Updated `calculateCompletedDiscoveryCycles` method**:
+   - Removed artificial limit of 100 issues
+   - Now processes all available projects for complete analysis
+
+3. **Created test endpoint**:
+   - `/api/test-jira-fetch` to verify Jira API functionality
+   - Confirms 519 issues available in Next.js context
+
+### 📊 **Expected Results After Fix**
+- **Q1 2025**: Should show ~31 completed projects (instead of 1)
+- **Q2 2025**: Should show ~30 completed projects (instead of 5)
+- **Q3 2025**: Should show ~34 completed projects (instead of 23)
+- **Total**: Complete dataset with accurate cycle time analysis
+
+### 🎯 **Next Steps**
+1. **Clear existing cache** and rebuild with complete dataset
+2. **Test chunked cache rebuild** with all 519 projects
+3. **Verify cycle time analysis** shows complete data for all quarters
+4. **Deploy to production** with complete dataset
 
 ## Active Discovery Time Calculation Issue (Current Session)
 
@@ -490,5 +638,97 @@ Enable debug logging by setting `isDebugIssue = true` for specific issue keys. T
 - [ ] Verify responsive design on mobile devices
 - [ ] Set up monitoring and analytics
 
+## Future Enhancements
+
+### Daily Incremental Updates
+**Goal**: Automate daily data refresh to keep dashboard current without manual intervention
+
+**Current Foundation**: 
+- `process-all-issues-fast.js` already skips cached issues efficiently
+- 30-second rate limiting respects Jira API limits
+- Robust error handling and logging in place
+
+**Implementation Options**:
+1. **Modify Existing Script**: Add date filtering to only process recent issues
+2. **New Incremental Script**: Create `process-incremental-updates.js` for small batches
+3. **GitHub Actions Workflow**: Automated daily runs with built-in monitoring
+
+**Expected Benefits**:
+- Low volume: 5-20 new/updated issues per day
+- Fast processing: 2.5-10 minutes total daily
+- No rate limit issues
+- Always fresh dashboard data
+- Minimal resource usage
+
+**JQL Query for Incremental Updates**:
+```javascript
+const jql = `project = HT AND (
+  created >= -1d OR 
+  updated >= -1d
+) ORDER BY updated DESC`;
+```
+
+**Cron Schedule**: `0 6 * * *` (6 AM UTC daily)
+
+## Critical Database Management Lessons Learned
+
+### ⚠️ **Database Initialization Data Loss (2025-09-15)**
+
+**What Happened:**
+- Fixed SQL syntax errors in Postgres schema by calling `initializeDatabase()`
+- This cleared all cached cycle time data (140+ issues) that had been built up over time
+- Cache had to be rebuilt from scratch, losing significant processing progress
+
+**Root Cause:**
+- `initializeDatabase()` calls `createPostgresTables()` which uses `CREATE TABLE IF NOT EXISTS`
+- However, the function was being used for schema fixes, not just initial setup
+- No separation between schema migration and data initialization
+
+**Prevention Measures Implemented:**
+1. **Schema-Only Migration Endpoint**: `/api/migrate-schema-only` - Updates schema without touching data
+2. **Cache Backup Endpoint**: `/api/backup-cache` - Creates backup before making changes
+3. **Safer Migration Pattern**: Always backup data before schema changes
+
+**Best Practices Going Forward:**
+- **Never use `initializeDatabase()` for schema fixes** - use `/api/migrate-schema-only` instead
+- **Always backup cache data** before making database changes
+- **Test schema changes** on a copy of production data first
+- **Separate concerns**: Schema migration ≠ Data initialization
+
+**Recovery Time:**
+- Cache rebuilt from 0 to 171 issues in ~10 minutes
+- System processing efficiently, but lost significant manual work
+- Lesson learned: Always preserve data when fixing schema issues
+
+### ⚠️ **Second Data Loss Incident (2025-09-15)**
+
+**What Happened:**
+- Fixed HT-156 calendar vs active discovery time calculation bug
+- Used `curl -X POST "http://localhost:3000/api/clear-cache"` instead of targeted clearing
+- Wiped entire cycle time cache (521 issues) when only needed to clear project details cache
+- Lost hours of processing work again
+
+**Root Cause:**
+- Used wrong API endpoint - should have used `/api/clear-all-project-details-cache`
+- No safeguards in place to prevent accidental full cache clearing
+- Developer error in choosing the right clearing method
+
+**Prevention Measures Implemented:**
+1. **Enhanced Confirmation Dialogs**: Require typing "DELETE ALL CACHE" to confirm
+2. **Safer Cache Management UI**: Added separate "Clear Project Details Cache" button
+3. **Clear Button Labels**: "Clear ALL Cache (DANGER)" vs "Clear Project Details Cache"
+4. **Cache Count Warnings**: Show exactly how many issues will be lost
+
+**Best Practices Going Forward:**
+- **Always use targeted clearing** when possible (project details vs full cache)
+- **Double-check API endpoints** before running destructive commands
+- **Use UI instead of curl** for cache management when possible
+- **Test on single issues** before applying fixes to entire cache
+
+**Recovery Time:**
+- Cache rebuilt from 1 to 521 issues in ~1.5 hours (fast processing)
+- User had to manually restart processing via UI
+- Lesson learned: Implement better safeguards and use targeted operations
+
 ---
-*Last updated: December 2024*
+*Last updated: September 2025*

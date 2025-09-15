@@ -1,4 +1,4 @@
-import { initDatabase, createTables, getDbService } from '../lib/database';
+import { initializeDatabase as initDb, getDatabaseService } from '../lib/database-factory';
 import { getDataProcessor } from '../lib/data-processor';
 
 async function initializeDatabase() {
@@ -6,12 +6,8 @@ async function initializeDatabase() {
     console.log('🚀 Starting database initialization...');
     
     // Initialize database
-    await initDatabase();
-    console.log('✅ Database connected');
-    
-    // Create tables
-    await createTables();
-    console.log('✅ Database tables created');
+    await initDb();
+    console.log('✅ Database connected and tables created');
     
     // Get data processor instance (now that DB is initialized)
     const dataProcessor = getDataProcessor();

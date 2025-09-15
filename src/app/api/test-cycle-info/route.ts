@@ -6,8 +6,9 @@ export async function GET(request: NextRequest) {
   try {
     const dataProcessor = getDataProcessor();
     
-    // Test with HT-475 which is in "06 Build" status
-    const issueKey = 'HT-475';
+    // Get issue key from query parameter, default to HT-475
+    const { searchParams } = new URL(request.url);
+    const issueKey = searchParams.get('issueKey') || 'HT-475';
     console.log(`Testing cycle info for ${issueKey}...`);
     
     const cycleInfo = await dataProcessor.calculateDiscoveryCycleInfo(issueKey);

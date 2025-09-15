@@ -552,8 +552,8 @@ export class DataProcessor {
         };
       }
       
-      // Find discovery start (first transition to any discovery status)
-      const discoveryStart = statusChanges.find((change: any) => 
+      // Find discovery starts and end
+      const discoveryStarts = statusChanges.filter((change: any) => 
         change.to && (
           change.to.includes('02 Generative Discovery') ||
           change.to.includes('04 Problem Discovery') ||
@@ -561,7 +561,28 @@ export class DataProcessor {
         )
       );
       
-      if (!discoveryStart) {
+      // Find discovery end first
+      const discoveryEnd = statusChanges.find((change: any) => 
+        change.from && (
+          change.from.includes('02 Generative Discovery') ||
+          change.from.includes('04 Problem Discovery') ||
+          change.from.includes('05 Solution Discovery')
+        ) && change.to && (
+          change.to.includes('06 Build') ||
+          change.to.includes('Won\'t Do') ||
+          change.to.includes('09 Live') ||
+          change.to.includes('Done') ||
+          change.to.includes('Resolved')
+        )
+      );
+      
+      // Find the first discovery start (for calendar time) and last discovery start before end (for active time)
+      const firstDiscoveryStart = discoveryStarts[0]; // First discovery start
+      const lastDiscoveryStartBeforeEnd = discoveryEnd ? 
+        discoveryStarts.filter(start => start.date < discoveryEnd.date).pop() : 
+        discoveryStarts[discoveryStarts.length - 1];
+      
+      if (!firstDiscoveryStart) {
         // Check if this project went directly to Build without discovery
         const directToBuild = statusChanges.find((change: any) => 
           change.to && change.to.includes('06 Build')
@@ -586,22 +607,8 @@ export class DataProcessor {
         };
       }
       
-      const discoveryStartDate = discoveryStart.date;
-      
-      // Find discovery end (transition from discovery status to completion status)
-      const discoveryEnd = statusChanges.find((change: any) => 
-        change.from && (
-          change.from.includes('02 Generative Discovery') ||
-          change.from.includes('04 Problem Discovery') ||
-          change.from.includes('05 Solution Discovery')
-        ) && change.to && (
-          change.to.includes('06 Build') ||
-          change.to.includes('Won\'t Do') ||
-          change.to.includes('09 Live') ||
-          change.to.includes('Done') ||
-          change.to.includes('Resolved')
-        )
-      );
+      const calendarDiscoveryStartDate = firstDiscoveryStart.date;
+      const activeDiscoveryStartDate = lastDiscoveryStartBeforeEnd?.date || firstDiscoveryStart.date;
       
       if (discoveryEnd) {
         let endReason = 'Unknown transition';
@@ -615,24 +622,26 @@ export class DataProcessor {
           endReason = 'Completed';
         }
         
-        const calendarDays = Math.ceil((discoveryEnd.date.getTime() - discoveryStartDate.getTime()) / (1000 * 60 * 60 * 24));
+        // Calculate calendar days from first discovery start to discovery end
+        const calendarDays = Math.ceil((discoveryEnd.date.getTime() - calendarDiscoveryStartDate.getTime()) / (1000 * 60 * 60 * 24));
         
-        // Adjust discovery start date if it's before the first changelog entry
-        let adjustedDiscoveryStart = discoveryStartDate;
+        // Calculate active days from last discovery start before end to discovery end
+        // Adjust active discovery start date if it's before the first changelog entry
+        let adjustedActiveDiscoveryStart = activeDiscoveryStartDate;
         if (histories.length > 0) {
           const firstChangelogDate = new Date(histories[0].created);
-          if (discoveryStartDate < firstChangelogDate) {
+          if (activeDiscoveryStartDate < firstChangelogDate) {
             if (issueKey === 'HT-156') {
-              console.log(`Adjusting discovery start from ${discoveryStartDate.toISOString()} to ${firstChangelogDate.toISOString()}`);
+              console.log(`Adjusting active discovery start from ${activeDiscoveryStartDate.toISOString()} to ${firstChangelogDate.toISOString()}`);
             }
-            adjustedDiscoveryStart = firstChangelogDate;
+            adjustedActiveDiscoveryStart = firstChangelogDate;
           }
         }
         
-        const activeDays = this.calculateActiveDiscoveryDays(histories, adjustedDiscoveryStart, discoveryEnd.date, issueKey);
+        const activeDays = this.calculateActiveDiscoveryDays(histories, adjustedActiveDiscoveryStart, discoveryEnd.date, issueKey);
         
         return {
-          discoveryStartDate,
+          discoveryStartDate: calendarDiscoveryStartDate, // Return calendar start for display
           discoveryEndDate: discoveryEnd.date,
           endDateLogic: endReason,
           calendarDaysInDiscovery: calendarDays,
@@ -643,24 +652,27 @@ export class DataProcessor {
       // Check if archived (would need to check customfield_10456, but for now assume still active)
       // For now, use current date as end date
       const now = new Date();
-      const calendarDays = Math.ceil((now.getTime() - discoveryStartDate.getTime()) / (1000 * 60 * 60 * 24));
       
-      // Adjust discovery start date if it's before the first changelog entry
-      let adjustedDiscoveryStart = discoveryStartDate;
+      // Calculate calendar days from first discovery start to now
+      const calendarDays = Math.ceil((now.getTime() - calendarDiscoveryStartDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // Calculate active days from last discovery start to now
+      // Adjust active discovery start date if it's before the first changelog entry
+      let adjustedActiveDiscoveryStart = activeDiscoveryStartDate;
       if (histories.length > 0) {
         const firstChangelogDate = new Date(histories[0].created);
-        if (discoveryStartDate < firstChangelogDate) {
+        if (activeDiscoveryStartDate < firstChangelogDate) {
           if (issueKey === 'HT-156') {
-            console.log(`Adjusting discovery start from ${discoveryStartDate.toISOString()} to ${firstChangelogDate.toISOString()}`);
+            console.log(`Adjusting active discovery start from ${activeDiscoveryStartDate.toISOString()} to ${firstChangelogDate.toISOString()}`);
           }
-          adjustedDiscoveryStart = firstChangelogDate;
+          adjustedActiveDiscoveryStart = firstChangelogDate;
         }
       }
       
-      const activeDays = this.calculateActiveDiscoveryDays(histories, adjustedDiscoveryStart, now, issueKey);
+      const activeDays = this.calculateActiveDiscoveryDays(histories, adjustedActiveDiscoveryStart, now, issueKey);
       
       return {
-        discoveryStartDate,
+        discoveryStartDate: calendarDiscoveryStartDate, // Return calendar start for display
         discoveryEndDate: now,
         endDateLogic: 'Still in Discovery',
         calendarDaysInDiscovery: calendarDays,
@@ -886,6 +898,10 @@ export class DataProcessor {
       if (cachedData.length > 0) {
         console.log(`Using cached cycle time data for ${cachedData.length} projects`);
         
+        // Get excluded issues
+        const excludedIssues = await dbService.getExcludedIssues();
+        console.log(`Found ${excludedIssues.length} excluded issues`);
+        
         // Process cached data
         const completedCycles: Array<{
           key: string;
@@ -896,6 +912,10 @@ export class DataProcessor {
         }> = [];
 
         for (const cached of cachedData) {
+          // Skip excluded issues
+          if (excludedIssues.includes(cached.issueKey)) {
+            continue;
+          }
           // Only include projects with completed discovery cycles
           if (cached.discoveryStartDate && 
               cached.discoveryEndDate && 
@@ -925,9 +945,9 @@ export class DataProcessor {
       const allIssues = await getAllIssuesForCycleAnalysis();
       console.log(`Fetched ${allIssues.length} total projects for cycle analysis`);
       
-      // Limit to recent issues to avoid timeout (last 100 issues)
-      const recentIssues = allIssues.slice(0, 100);
-      console.log(`Processing only ${recentIssues.length} recent issues to avoid timeout`);
+      // Process all issues for complete cycle time analysis
+      const recentIssues = allIssues;
+      console.log(`Processing ${recentIssues.length} issues for cycle time analysis`);
       
       const completedCycles: Array<{
         key: string;
@@ -1031,9 +1051,26 @@ export class DataProcessor {
   } {
     // Group by quarter and calculate statistics
     const cohorts: any = {};
-    // Get all unique quarters from the data
-    const allQuarters = [...new Set(completedCycles.map(cycle => cycle.completionQuarter))].sort();
-    const quarters = allQuarters.length > 0 ? allQuarters : ['Q1_2025', 'Q2_2025', 'Q3_2025'];
+    // Get all unique quarters from the data and sort chronologically
+    const allQuarters = [...new Set(completedCycles.map(cycle => cycle.completionQuarter))];
+    
+    // Sort quarters chronologically (Q3_2024, Q4_2024, Q1_2025, Q2_2025, Q3_2025, etc.)
+    const sortedQuarters = allQuarters.sort((a, b) => {
+      // Extract year and quarter from strings like "Q1_2025"
+      const [qA, yearA] = a.split('_');
+      const [qB, yearB] = b.split('_');
+      
+      // Compare years first
+      if (yearA !== yearB) {
+        return parseInt(yearA) - parseInt(yearB);
+      }
+      
+      // If same year, compare quarters
+      const quarterOrder = { 'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4 };
+      return quarterOrder[qA as keyof typeof quarterOrder] - quarterOrder[qB as keyof typeof quarterOrder];
+    });
+    
+    const quarters = sortedQuarters.length > 0 ? sortedQuarters : ['Q3_2024', 'Q4_2024', 'Q1_2025', 'Q2_2025', 'Q3_2025'];
     
     for (const quarter of quarters) {
       const quarterData = completedCycles

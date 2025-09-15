@@ -1,0 +1,103 @@
+name: Process Jira Cache
+
+on:
+  workflow_dispatch:
+    inputs:
+      processing_mode:
+        description: 'Processing mode'
+        required: true
+        default: 'slow'
+        type: choice
+        options:
+        - slow
+        - fast
+  schedule:
+    # Run every hour to check status
+    - cron: '0 * * * *'
+
+jobs:
+  process-cache:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Start development server
+      run: npm run dev &
+      
+    - name: Wait for server
+      run: sleep 30
+      
+    - name: Run cache processing
+      run: |
+        if [ "${{ github.event.inputs.processing_mode }}" = "slow" ]; then
+          node process-all-issues.js
+        else
+          node process-all-issues-fast.js
+        fi
+      env:
+        NODE_ENV: production
+        
+    - name: Upload logs
+      uses: actions/upload-artifact@v4
+      with:
+        name: processing-logs
+        path: logs/
+        
+    - name: Upload final report
+      uses: actions/upload-artifact@v4
+      with:
+        name: final-report
+        path: logs/final-report-*.json
+
+  monitor-status:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Start development server
+      run: npm run dev &
+      
+    - name: Wait for server
+      run: sleep 30
+      
+    - name: Check processing status
+      run: |
+        echo "Checking cache processing status..."
+        curl -s "http://localhost:3000/api/processing-status" | jq '.'
+        
+    - name: Create status report
+      run: |
+        STATUS=$(curl -s "http://localhost:3000/api/processing-status")
+        echo "## Cache Processing Status" >> $GITHUB_STEP_SUMMARY
+        echo "**Last Updated:** $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Progress:** $(echo $STATUS | jq -r '.data.progress.progressPercentage')%" >> $GITHUB_STEP_SUMMARY
+        echo "**Cached Issues:** $(echo $STATUS | jq -r '.data.progress.cachedCount') / $(echo $STATUS | jq -r '.data.progress.totalIssues')" >> $GITHUB_STEP_SUMMARY
+        echo "**Uncached Issues:** $(echo $STATUS | jq -r '.data.progress.uncachedCount')" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Quarter Distribution:**" >> $GITHUB_STEP_SUMMARY
+        echo $STATUS | jq -r '.data.quarterDistribution[] | "- \(.quarter): \(.count) projects"' >> $GITHUB_STEP_SUMMARY

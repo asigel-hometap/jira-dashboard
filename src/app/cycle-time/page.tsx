@@ -30,6 +30,7 @@ interface ProjectDetail {
   discoveryStart: string;
   activeDiscoveryTime: number;
   calendarDiscoveryTime: number;
+  isExcluded?: boolean;
 }
 
 export default function CycleTimePage() {
@@ -41,6 +42,8 @@ export default function CycleTimePage() {
   const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null);
   const [projectDetails, setProjectDetails] = useState<ProjectDetail[]>([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [excludedIssues, setExcludedIssues] = useState<Set<string>>(new Set());
+  const [togglingExclusion, setTogglingExclusion] = useState<string | null>(null);
 
   const fetchCycleTimeData = async () => {
     try {
@@ -66,6 +69,7 @@ export default function CycleTimePage() {
 
   useEffect(() => {
     fetchCycleTimeData();
+    fetchExcludedIssues();
   }, [timeType]);
 
   const fetchProjectDetails = async (quarter: string) => {
@@ -80,7 +84,12 @@ export default function CycleTimePage() {
       const result = await response.json();
       
       if (result.success) {
-        setProjectDetails(result.data);
+        // Add exclusion state to project details
+        const projectsWithExclusion = result.data.map((project: ProjectDetail) => ({
+          ...project,
+          isExcluded: excludedIssues.has(project.key)
+        }));
+        setProjectDetails(projectsWithExclusion);
       } else {
         console.error('Error fetching project details:', result.error);
         setProjectDetails([]);
@@ -112,6 +121,71 @@ export default function CycleTimePage() {
     });
 
     return { cohorts: convertedCohorts };
+  };
+
+  const fetchExcludedIssues = async () => {
+    try {
+      const baseUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app'
+        : '';
+      const response = await fetch(`${baseUrl}/api/project-exclusions`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setExcludedIssues(new Set(result.data.excludedIssues));
+      }
+    } catch (err) {
+      console.error('Error fetching excluded issues:', err);
+    }
+  };
+
+  const toggleExclusion = async (issueKey: string) => {
+    try {
+      setTogglingExclusion(issueKey);
+      const baseUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app'
+        : '';
+      
+      const response = await fetch(`${baseUrl}/api/project-exclusions/toggle`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          issueKey,
+          excludedBy: 'user', // You could make this dynamic
+          reason: 'Manual exclusion from cycle time analysis'
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        const newExcludedIssues = new Set(excludedIssues);
+        if (result.data.isExcluded) {
+          newExcludedIssues.add(issueKey);
+        } else {
+          newExcludedIssues.delete(issueKey);
+        }
+        setExcludedIssues(newExcludedIssues);
+        
+        // Update project details to reflect exclusion state
+        setProjectDetails(prev => 
+          prev.map(project => 
+            project.key === issueKey 
+              ? { ...project, isExcluded: result.data.isExcluded }
+              : project
+          )
+        );
+        
+        // Refresh cycle time data to reflect exclusions
+        await fetchCycleTimeData();
+      }
+    } catch (err) {
+      console.error('Error toggling exclusion:', err);
+    } finally {
+      setTogglingExclusion(null);
+    }
   };
 
   if (loading) {
@@ -247,7 +321,22 @@ export default function CycleTimePage() {
 
           {/* Summary Statistics */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {Object.entries(cycleTimeData.cohorts).map(([quarter, cohort]) => (
+            {Object.entries(cycleTimeData.cohorts)
+              .sort(([a], [b]) => {
+                // Sort quarters chronologically (Q3_2024, Q4_2024, Q1_2025, Q2_2025, Q3_2025, etc.)
+                const [qA, yearA] = a.split('_');
+                const [qB, yearB] = b.split('_');
+                
+                // Compare years first
+                if (yearA !== yearB) {
+                  return parseInt(yearA) - parseInt(yearB);
+                }
+                
+                // If same year, compare quarters
+                const quarterOrder = { 'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4 };
+                return quarterOrder[qA as keyof typeof quarterOrder] - quarterOrder[qB as keyof typeof quarterOrder];
+              })
+              .map(([quarter, cohort]) => (
               <div 
                 key={quarter} 
                 className={`bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors ${
@@ -256,15 +345,12 @@ export default function CycleTimePage() {
                 onClick={() => fetchProjectDetails(quarter)}
               >
                 <h3 className="text-sm font-medium text-gray-900 mb-2">
-                  {quarter.replace('_2025', ' 2025')} (n = {cohort.size})
+                  {quarter.replace('_2025', ' 2025')} (n={cohort.size})
                 </h3>
                 {cohort.size > 0 ? (
                   <div className="space-y-1 text-sm text-gray-600">
+                    <div>Range: {unit === 'weeks' ? Math.round(cohort.stats.min / 7 * 10) / 10 : cohort.stats.min} to {unit === 'weeks' ? Math.round(cohort.stats.max / 7 * 10) / 10 : cohort.stats.max} {unit}</div>
                     <div>Median: {unit === 'weeks' ? Math.round(cohort.stats.median / 7 * 10) / 10 : cohort.stats.median} {unit}</div>
-                    <div>1st Quartile: {unit === 'weeks' ? Math.round(cohort.stats.q1 / 7 * 10) / 10 : cohort.stats.q1} {unit}</div>
-                    <div>3rd Quartile: {unit === 'weeks' ? Math.round(cohort.stats.q3 / 7 * 10) / 10 : cohort.stats.q3} {unit}</div>
-                    <div>Min: {unit === 'weeks' ? Math.round(cohort.stats.min / 7 * 10) / 10 : cohort.stats.min} {unit}</div>
-                    <div>Max: {unit === 'weeks' ? Math.round(cohort.stats.max / 7 * 10) / 10 : cohort.stats.max} {unit}</div>
                     {cohort.outliers.length > 0 && (
                       <div className="text-red-600">Outliers: {cohort.outliers.length}</div>
                     )}
@@ -324,13 +410,23 @@ export default function CycleTimePage() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Calendar Discovery Time
                         </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Exclude
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {projectDetails.map((project, index) => (
                         <tr key={project.key} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                            {project.key}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <a 
+                              href={`https://hometap.atlassian.net/browse/${project.key}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 hover:underline"
+                            >
+                              {project.key}
+                            </a>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
                             {project.summary}
@@ -346,6 +442,25 @@ export default function CycleTimePage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {unit === 'weeks' ? Math.round(project.calendarDiscoveryTime / 7 * 10) / 10 : project.calendarDiscoveryTime} {unit}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-center">
+                            <button
+                              onClick={() => toggleExclusion(project.key)}
+                              disabled={togglingExclusion === project.key}
+                              className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                excludedIssues.has(project.key)
+                                  ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                              } ${togglingExclusion === project.key ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                            >
+                              {togglingExclusion === project.key ? (
+                                <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                              ) : excludedIssues.has(project.key) ? (
+                                'Excluded'
+                              ) : (
+                                'Include'
+                              )}
+                            </button>
                           </td>
                         </tr>
                       ))}

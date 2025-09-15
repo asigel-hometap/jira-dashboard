@@ -446,6 +446,65 @@ export class DataProcessor {
     return breakdown;
   }
 
+  // Get ACTIVE health breakdown for a specific team member (excludes Complete projects in Live status)
+  async getActiveHealthBreakdownForTeamMember(teamMemberName: string): Promise<{
+    onTrack: number;
+    atRisk: number;
+    offTrack: number;
+    onHold: number;
+    mystery: number;
+    complete: number;
+    unknown: number;
+  }> {
+    const dbService = getDatabaseService();
+    const issues = await dbService.getActiveIssues();
+    
+    // Filter issues by assignee and exclude Complete projects only if they're in Live status (08+)
+    const memberIssues = issues.filter(issue => 
+      issue.assignee === teamMemberName && !(issue.health === 'Complete' && issue.status.startsWith('08'))
+    );
+    
+    const breakdown = {
+      onTrack: 0,
+      atRisk: 0,
+      offTrack: 0,
+      onHold: 0,
+      mystery: 0,
+      complete: 0, // This will always be 0 for active breakdown
+      unknown: 0
+    };
+
+    for (const issue of memberIssues) {
+      switch (issue.health) {
+        case 'On Track':
+          breakdown.onTrack++;
+          break;
+        case 'At Risk':
+          breakdown.atRisk++;
+          break;
+        case 'Off Track':
+          breakdown.offTrack++;
+          break;
+        case 'On Hold':
+          breakdown.onHold++;
+          break;
+        case 'Mystery':
+          breakdown.mystery++;
+          break;
+        case 'Complete':
+          // This should never happen since we filtered out Complete projects
+          breakdown.complete++;
+          break;
+        default:
+          // If health is null or unknown, count as unknown
+          breakdown.unknown++;
+          break;
+      }
+    }
+
+    return breakdown;
+  }
+
   // Calculate weeks at risk for an issue based on changelog data
   async calculateWeeksAtRisk(issueKey: string): Promise<number> {
     try {

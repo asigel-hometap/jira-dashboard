@@ -237,7 +237,7 @@ export class PostgresDatabaseService {
       const result = await client.query(`
         SELECT * FROM issues 
         WHERE is_archived = FALSE 
-        AND status NOT IN ('01 Inbox', '03 Committed', '09 Live', 'Won''t Do')
+        AND status NOT IN ('01 Inbox', '03 Committed', '08 Live', '09 Live', 'Won''t Do')
         ORDER BY updated DESC
       `);
       return result.rows.map(this.mapRowToIssue);

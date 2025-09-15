@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         ];
         
         const workloadData = await Promise.all(teamMembers.map(async (member) => {
-          const healthBreakdown = await dataProcessor.getHealthBreakdownForTeamMember(member);
+          const healthBreakdown = await dataProcessor.getActiveHealthBreakdownForTeamMember(member);
           const activeProjectCount = healthBreakdown.onTrack + healthBreakdown.atRisk + 
                                    healthBreakdown.offTrack + healthBreakdown.onHold + 
                                    healthBreakdown.mystery + healthBreakdown.complete + 

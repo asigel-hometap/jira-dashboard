@@ -48,10 +48,7 @@ export default function CycleTimePage() {
   const fetchCycleTimeData = async () => {
     try {
       setLoading(true);
-      const baseUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app'
-        : '';
-      const response = await fetch(`${baseUrl}/api/cycle-time-analysis?timeType=${timeType}`);
+      const response = await fetch(`/api/cycle-time-analysis?timeType=${timeType}`);
       const result = await response.json();
       
       if (result.success) {
@@ -77,10 +74,7 @@ export default function CycleTimePage() {
       setDetailsLoading(true);
       setSelectedQuarter(quarter);
       
-      const baseUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app'
-        : '';
-      const response = await fetch(`${baseUrl}/api/cycle-time-details?quarter=${quarter}`);
+      const response = await fetch(`/api/cycle-time-details?quarter=${quarter}`);
       const result = await response.json();
       
       if (result.success) {
@@ -125,10 +119,7 @@ export default function CycleTimePage() {
 
   const fetchExcludedIssues = async () => {
     try {
-      const baseUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app'
-        : '';
-      const response = await fetch(`${baseUrl}/api/project-exclusions`);
+      const response = await fetch(`/api/project-exclusions`);
       const result = await response.json();
       
       if (result.success) {
@@ -142,11 +133,8 @@ export default function CycleTimePage() {
   const toggleExclusion = async (issueKey: string) => {
     try {
       setTogglingExclusion(issueKey);
-      const baseUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app'
-        : '';
       
-      const response = await fetch(`${baseUrl}/api/project-exclusions/toggle`, {
+      const response = await fetch(`/api/project-exclusions/toggle`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

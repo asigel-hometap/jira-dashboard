@@ -82,10 +82,7 @@ export default function TrendsPage() {
       if (filters.team) params.append('team', filters.team);
       if (filters.bizChamp) params.append('bizChamp', filters.bizChamp);
       
-      const baseUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app'
-        : '';
-      const response = await fetch(`${baseUrl}/api/trends?${params.toString()}`);
+      const response = await fetch(`/api/trends?${params.toString()}`);
       const result = await response.json();
       
       // Clear intervals

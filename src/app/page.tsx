@@ -22,10 +22,7 @@ export default function Home() {
   const fetchWorkloadData = async () => {
     try {
       setLoading(true);
-      const baseUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app'
-        : '';
-      const response = await fetch(`${baseUrl}/api/workload`);
+      const response = await fetch(`/api/workload`);
       const result = await response.json();
       
       if (result.success) {
@@ -43,10 +40,7 @@ export default function Home() {
 
   const fetchDataContext = async () => {
     try {
-      const baseUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app'
-        : '';
-      const response = await fetch(`${baseUrl}/api/data-context`);
+      const response = await fetch(`/api/data-context`);
       const result = await response.json();
       
       if (result.success) {
@@ -60,10 +54,7 @@ export default function Home() {
 
   const fetchTrendsData = async () => {
     try {
-      const baseUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://jira-dashboard-5kcaaaix5-adam-sigels-projects-2bc3f53e.vercel.app'
-        : '';
-      const response = await fetch(`${baseUrl}/api/workload-trends`);
+      const response = await fetch(`/api/workload-trends`);
       const result = await response.json();
       
       if (result.success) {

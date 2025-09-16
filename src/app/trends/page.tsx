@@ -283,6 +283,32 @@ export default function TrendsPage() {
       tooltip: {
         mode: 'index' as const,
         intersect: false,
+        callbacks: {
+          title: function(context: any) {
+            if (context.length > 0) {
+              const dataIndex = context[0].dataIndex;
+              const weekData = trendData[dataIndex];
+              return `${weekData.week} (${weekData.totalProjects} total projects)`;
+            }
+            return '';
+          },
+          label: function(context: any) {
+            const dataIndex = context.dataIndex;
+            const weekData = trendData[dataIndex];
+            const total = weekData.totalProjects;
+            const value = context.parsed.y;
+            const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+            return `${context.dataset.label}: ${value} (${percentage}%)`;
+          },
+          footer: function(context: any) {
+            if (context.length > 0) {
+              const dataIndex = context[0].dataIndex;
+              const weekData = trendData[dataIndex];
+              return `Total: ${weekData.totalProjects} projects`;
+            }
+            return '';
+          }
+        }
       },
     },
     scales: {

@@ -136,6 +136,53 @@ export default function CacheManagement() {
     }
   };
 
+  const forceRebuildProjectDetails = async () => {
+    try {
+      setCacheStatus(prev => ({ ...prev, isRunning: true, error: null }));
+      
+      // Get all quarters from cycle time cache to rebuild project details for each
+      const response = await fetch('/api/cycle-time-analysis');
+      const data = await response.json();
+      
+      if (data.success && data.data.quarters) {
+        const quarters = data.data.quarters.map((q: any) => q.quarter);
+        let totalRebuilt = 0;
+        
+        for (const quarter of quarters) {
+          console.log(`Rebuilding project details for ${quarter}...`);
+          const rebuildResponse = await fetch(`/api/cycle-time-details?quarter=${quarter}&force_rebuild=true`);
+          const rebuildData = await rebuildResponse.json();
+          
+          if (rebuildData.success) {
+            totalRebuilt += rebuildData.data.length;
+            console.log(`Rebuilt ${rebuildData.data.length} projects for ${quarter}`);
+          }
+        }
+        
+        setCacheStatus(prev => ({ 
+          ...prev, 
+          isRunning: false,
+          error: null
+        }));
+        
+        // Show success message
+        alert(`Successfully rebuilt project details cache for ${quarters.length} quarters with ${totalRebuilt} total projects`);
+      } else {
+        setCacheStatus(prev => ({ 
+          ...prev, 
+          isRunning: false, 
+          error: 'Failed to get quarters for rebuild' 
+        }));
+      }
+    } catch (error) {
+      setCacheStatus(prev => ({ 
+        ...prev, 
+        isRunning: false, 
+        error: error instanceof Error ? error.message : 'Failed to rebuild project details cache' 
+      }));
+    }
+  };
+
   const startCachePopulation = async () => {
     setCacheStatus(prev => ({ ...prev, isRunning: true, error: null }));
     
@@ -541,28 +588,77 @@ export default function CacheManagement() {
                 </div>
               </div>
 
-              {/* Data Quality Issues */}
-              {(coverage.missingFromDb.length > 0 || coverage.cachedButMissingFromDb.length > 0) && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-gray-800">Data Quality Issues</h3>
-                    <div className="flex gap-2">
+              {/* Cache Management Actions */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800">Cache Management Actions</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Sync Missing Issues */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-blue-800">Sync Missing Issues</h4>
                       <button
                         onClick={syncMissingIssues}
                         disabled={cacheStatus.isRunning}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        className="px-3 py-1 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                       >
-                        Sync Missing Issues
+                        Sync
                       </button>
+                    </div>
+                    <p className="text-sm text-blue-700 mb-2">
+                      Finds issues that exist in Jira but are missing from your database and syncs them.
+                    </p>
+                    <p className="text-xs text-blue-600">
+                      <strong>Use when:</strong> You see &quot;Issues Missing from Database&quot; below, or when new projects aren&apos;t appearing in the dashboard.
+                    </p>
+                  </div>
+
+                  {/* Sync Cached Issues */}
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-green-800">Sync Cached Issues</h4>
                       <button
                         onClick={syncCachedIssues}
                         disabled={cacheStatus.isRunning}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        className="px-3 py-1 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                       >
-                        Sync Cached Issues
+                        Sync
                       </button>
                     </div>
+                    <p className="text-sm text-green-700 mb-2">
+                      Finds issues that have cycle time data cached but are missing from your database.
+                    </p>
+                    <p className="text-xs text-green-600">
+                      <strong>Use when:</strong> You see &quot;Cached but Missing from Database&quot; below, or when cycle time analysis shows incomplete data.
+                    </p>
                   </div>
+
+                  {/* Force Rebuild Project Details */}
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-purple-800">Rebuild Project Details</h4>
+                      <button
+                        onClick={forceRebuildProjectDetails}
+                        disabled={cacheStatus.isRunning}
+                        className="px-3 py-1 bg-purple-600 text-white rounded text-sm font-medium hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      >
+                        Rebuild
+                      </button>
+                    </div>
+                    <p className="text-sm text-purple-700 mb-2">
+                      Rebuilds the project details cache from cycle time data for all quarters.
+                    </p>
+                    <p className="text-xs text-purple-600">
+                      <strong>Use when:</strong> Cycle time analysis shows fewer projects than expected (e.g., n=34 but only 1 project visible), or after major data updates.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Data Quality Issues */}
+              {(coverage.missingFromDb.length > 0 || coverage.cachedButMissingFromDb.length > 0) && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-800">Data Quality Issues</h3>
                   
                   {coverage.missingFromDb.length > 0 && (
                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">

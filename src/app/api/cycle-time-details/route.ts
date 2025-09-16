@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const quarter = searchParams.get('quarter');
+    const forceRebuild = searchParams.get('force_rebuild') === 'true';
 
     if (!quarter) {
       return NextResponse.json(
@@ -17,23 +18,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // First, try to get cached data
-    const cachedProjects = await dbService.getProjectDetailsCache(quarter);
-    
-    if (cachedProjects.length > 0) {
-      console.log(`Using cached project details for ${quarter}: ${cachedProjects.length} projects`);
+    // First, try to get cached data (unless force rebuild is requested)
+    if (!forceRebuild) {
+      const cachedProjects = await dbService.getProjectDetailsCache(quarter);
       
-      return NextResponse.json({
-        success: true,
-        data: cachedProjects.map(project => ({
-          key: project.issueKey,
-          summary: project.summary,
-          assignee: project.assignee,
-          discoveryStart: project.discoveryStartDate,
-          activeDiscoveryTime: project.activeDaysInDiscovery,
-          calendarDiscoveryTime: project.calendarDaysInDiscovery
-        }))
-      });
+      if (cachedProjects.length > 0) {
+        console.log(`Using cached project details for ${quarter}: ${cachedProjects.length} projects`);
+        
+        return NextResponse.json({
+          success: true,
+          data: cachedProjects.map(project => ({
+            key: project.issueKey,
+            summary: project.summary,
+            assignee: project.assignee,
+            discoveryStart: project.discoveryStartDate,
+            activeDiscoveryTime: project.activeDaysInDiscovery,
+            calendarDiscoveryTime: project.calendarDaysInDiscovery
+          }))
+        });
+      }
+    } else {
+      console.log(`Force rebuild requested for ${quarter}, skipping cache`);
     }
 
     // If no cached data, use cycle time cache to build project details
@@ -84,30 +89,31 @@ export async function GET(request: NextRequest) {
           }
         }
         
-        completedProjects.push({
+        const project = {
           issueKey: cached.issueKey,
           summary: summary,
           assignee: assignee,
           discoveryStartDate: cached.discoveryStartDate.toISOString().split('T')[0],
           calendarDaysInDiscovery: cached.calendarDaysInDiscovery || 0,
           activeDaysInDiscovery: cached.activeDaysInDiscovery || 0
+        };
+        
+        completedProjects.push(project);
+        
+        // Cache this project immediately
+        await dbService.insertProjectDetailsCache({
+          quarter,
+          issueKey: project.issueKey,
+          summary: project.summary,
+          assignee: project.assignee,
+          discoveryStartDate: project.discoveryStartDate,
+          calendarDaysInDiscovery: project.calendarDaysInDiscovery,
+          activeDaysInDiscovery: project.activeDaysInDiscovery,
+          calculatedAt: new Date().toISOString()
         });
       }
     }
-
-    // Cache the results
-    for (const project of completedProjects) {
-      await dbService.insertProjectDetailsCache({
-        quarter,
-        issueKey: project.issueKey,
-        summary: project.summary,
-        assignee: project.assignee,
-        discoveryStartDate: project.discoveryStartDate,
-        calendarDaysInDiscovery: project.calendarDaysInDiscovery,
-        activeDaysInDiscovery: project.activeDaysInDiscovery,
-        calculatedAt: new Date().toISOString()
-      });
-    }
+    
     console.log(`Cached ${completedProjects.length} projects for ${quarter}`);
 
     return NextResponse.json({

@@ -639,6 +639,15 @@ export class PostgresDatabaseService {
     }
   }
 
+  async clearProjectDetailsCacheByQuarter(quarter: string): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('DELETE FROM project_details_cache WHERE quarter = $1', [quarter]);
+    } finally {
+      client.release();
+    }
+  }
+
   // Project exclusions methods
   async getExcludedIssues(): Promise<string[]> {
     const client = await this.pool.connect();

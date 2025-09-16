@@ -11,9 +11,9 @@ on:
         options:
         - slow
         - fast
-  schedule:
-    # Run every hour to check status
-    - cron: '0 * * * *'
+  # schedule:
+    # # Run every hour to check status
+    # - cron: '0 * * * *'
 
 jobs:
   process-cache:

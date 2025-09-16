@@ -260,14 +260,6 @@ export default function Home() {
                     : 'border-gray-200'
                 }`}
               >
-                {member.isOverloaded && (
-                  <div className="absolute top-2 right-2">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                      Overloaded
-                    </span>
-                  </div>
-                )}
-                
                 <div className="flex gap-6">
                   {/* Left side: Team member info and project health */}
                   <div className="flex-1 space-y-4">
@@ -279,10 +271,17 @@ export default function Home() {
                           </span>
                         </div>
                       </div>
-                      <div className="ml-4">
-                        <h3 className="text-sm font-medium text-gray-900">
-                          {member.teamMember}
-                        </h3>
+                      <div className="ml-4 flex-1">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-medium text-gray-900">
+                            {member.teamMember}
+                          </h3>
+                          {member.isOverloaded && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              Overloaded
+                            </span>
+                          )}
+                        </div>
                         <p className="text-2xl font-semibold text-gray-900">
                           {member.activeProjectCount}
                         </p>
@@ -298,7 +297,7 @@ export default function Home() {
 
                           {/* Right side: Workload Trend Sparkline */}
                           <div className="flex-1 max-w-2xl">
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center justify-between mb-2 pr-2">
                               <div className="text-xs text-gray-500">Workload Trend</div>
                               {trendsData && 'historicalDataPoints' in trendsData && (
                                 <div className="flex items-center space-x-2 text-xs">

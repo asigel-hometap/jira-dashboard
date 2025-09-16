@@ -56,17 +56,17 @@ export default function Home() {
 
   const fetchTrendsData = async () => {
     try {
-      console.log('Fetching trends data...');
-      const response = await fetch(`/api/workload-trends`);
+      console.log('Fetching extended trends data...');
+      const response = await fetch(`/api/extended-trends`);
       const result = await response.json();
       
-      console.log('Trends data result:', result);
+      console.log('Extended trends data result:', result);
       if (result.success) {
         setTrendsData(result.data);
-        console.log('Trends data set:', result.data);
+        console.log(`Loaded extended trends: ${result.data.historicalDataPoints} historical + ${result.data.realTimeDataPoints} real-time data points`);
       }
     } catch (err) {
-      console.error('Error fetching trends data:', err);
+      console.error('Error fetching extended trends data:', err);
     }
   };
 
@@ -87,6 +87,29 @@ export default function Home() {
   const teamMemberNames = useMemo(() => {
     return workloadData.map(member => member.teamMember);
   }, [workloadData]);
+
+  // Calculate the global maximum project count across all team members for Y-axis normalization
+  const globalMaxProjects = useMemo(() => {
+    if (!trendsData) {
+      return 0;
+    }
+
+    let max = 0;
+    const teamMemberKeys = ['adam', 'jennie', 'jacqueline', 'robert', 'garima', 'lizzy', 'sanela'];
+    
+    teamMemberKeys.forEach(key => {
+      const data = trendsData[key as keyof typeof trendsData];
+      if (Array.isArray(data) && data.length > 0) {
+        const memberMax = Math.max(...data);
+        if (memberMax > max) {
+          max = memberMax;
+        }
+      }
+    });
+    
+    // Add a small buffer to the max for better visual spacing
+    return max > 0 ? max + 1 : 1; // Ensure min 1 if all are 0
+  }, [trendsData]);
 
   // Memoized trend data calculation to prevent infinite re-renders
   const trendDataMap = useMemo(() => {
@@ -267,10 +290,28 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Right side: Workload Trend Sparkline */}
-                  <div className="flex-1 max-w-2xl">
-                    <div className="text-xs text-gray-500 mb-2">Workload Trend</div>
-                    <div className="bg-gray-50 rounded-lg p-3">
+                          {/* Right side: Workload Trend Sparkline */}
+                          <div className="flex-1 max-w-2xl">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="text-xs text-gray-500">Workload Trend</div>
+                              {trendsData && 'historicalDataPoints' in trendsData && (
+                                <div className="flex items-center space-x-2 text-xs">
+                                  {(trendsData as any).historicalDataPoints > 0 && (
+                                    <div className="flex items-center">
+                                      <div className="w-2 h-2 bg-blue-400 rounded-full mr-1"></div>
+                                      <span className="text-gray-600">{(trendsData as any).historicalDataPoints} historical</span>
+                                    </div>
+                                  )}
+                                  {(trendsData as any).realTimeDataPoints > 0 && (
+                                    <div className="flex items-center">
+                                      <div className="w-2 h-2 bg-green-400 rounded-full mr-1"></div>
+                                      <span className="text-gray-600">{(trendsData as any).realTimeDataPoints} real-time</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <div className="bg-gray-50 rounded-lg p-3">
                               <Sparkline
                                 data={trendDataMap.get(member.teamMember)?.data || []}
                                 dates={trendDataMap.get(member.teamMember)?.dates || []}
@@ -278,9 +319,10 @@ export default function Home() {
                                 color={member.isOverloaded ? '#EF4444' : '#3B82F6'}
                                 strokeWidth={2}
                                 showTooltip={true}
+                                globalMaxProjects={globalMaxProjects}
                               />
-                    </div>
-                  </div>
+                            </div>
+                          </div>
                 </div>
               </div>
             ))}

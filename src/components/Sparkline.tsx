@@ -11,6 +11,7 @@ interface SparklineProps {
   className?: string;
   dates?: string[];
   showTooltip?: boolean;
+  globalMaxProjects?: number;
 }
 
 // Custom tooltip component - memoized to prevent re-renders
@@ -51,7 +52,8 @@ const Sparkline = React.memo(({
   strokeWidth = 2,
   className = '',
   dates = [],
-  showTooltip = true
+  showTooltip = true,
+  globalMaxProjects
 }: SparklineProps) => {
   // Prepare data for Recharts - memoized to prevent unnecessary re-renders
   const chartData = useMemo(() => {
@@ -87,7 +89,7 @@ const Sparkline = React.memo(({
             hide 
             axisLine={false}
             tickLine={false}
-            domain={['dataMin - 1', 'dataMax + 1']}
+            domain={[0, globalMaxProjects || 'dataMax + 1']}
           />
           {showTooltip && (
             <Tooltip 

@@ -1,11 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface SparklineProps {
   data: number[];
-  width?: number;
   height?: number;
   color?: string;
   strokeWidth?: number;
@@ -14,16 +13,58 @@ interface SparklineProps {
   showTooltip?: boolean;
 }
 
-export default function Sparkline({ 
+// Custom tooltip component - memoized to prevent re-renders
+const CustomTooltip = React.memo(({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white p-2 border border-gray-200 rounded shadow-lg text-xs">
+        <p className="font-medium text-gray-900">{`Date: ${label}`}</p>
+        <p className="text-blue-600">{`Projects: ${payload[0].value}`}</p>
+      </div>
+    );
+  }
+  return null;
+});
+CustomTooltip.displayName = 'CustomTooltip';
+
+// Custom dot component for data points - memoized to prevent re-renders
+const CustomDot = React.memo((props: any) => {
+  const { cx, cy, fill } = props;
+  return (
+    <circle
+      cx={cx}
+      cy={cy}
+      r={3}
+      fill={fill}
+      stroke="white"
+      strokeWidth={2}
+      className="hover:r-4 transition-all duration-200"
+    />
+  );
+});
+CustomDot.displayName = 'CustomDot';
+
+const Sparkline = React.memo(({ 
   data, 
-  width = 120, 
   height = 30, 
   color = '#3B82F6',
   strokeWidth = 2,
   className = '',
   dates = [],
-  showTooltip = false
-}: SparklineProps) {
+  showTooltip = true
+}: SparklineProps) => {
+  // Prepare data for Recharts - memoized to prevent unnecessary re-renders
+  const chartData = useMemo(() => {
+    if (!data || data.length === 0) {
+      return [];
+    }
+    return data.map((value, index) => ({
+      value,
+      date: dates[index] || `Week ${index + 1}`,
+      index
+    }));
+  }, [data, dates]);
+
   if (!data || data.length === 0) {
     return (
       <div className={`flex items-center justify-center text-gray-400 text-xs ${className}`}>
@@ -32,48 +73,42 @@ export default function Sparkline({
     );
   }
 
-  // Create a simple SVG sparkline
-  const min = Math.min(...data);
-  const max = Math.max(...data);
-  const range = max - min || 1;
-  
-  const normalizedData = data.map(value => 
-    ((value - min) / range) * (height - 10) + 5
-  );
-
-  // Use a fixed width for calculations, but make SVG responsive
-  const chartWidth = 400; // Fixed width for calculations
-  const stepX = data.length > 1 ? (chartWidth - 10) / (data.length - 1) : 0;
-  const pathData = normalizedData
-    .map((y, index) => {
-      const x = 5 + index * stepX;
-      return `${index === 0 ? 'M' : 'L'} ${x} ${height - y}`;
-    })
-    .join(' ');
-
   return (
-    <div className={`relative w-full ${className}`}>
-      <div className="w-full" style={{ height: height }}>
-        <svg width="100%" height={height} viewBox={`0 0 ${chartWidth} ${height}`} className="overflow-visible">
-          <path
-            d={pathData}
-            fill="none"
+    <div className={`w-full ${className}`} style={{ height: height }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+          <XAxis 
+            dataKey="date" 
+            hide 
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis 
+            hide 
+            axisLine={false}
+            tickLine={false}
+            domain={['dataMin - 1', 'dataMax + 1']}
+          />
+          {showTooltip && (
+            <Tooltip 
+              content={<CustomTooltip />}
+              cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: '3 3' }}
+            />
+          )}
+          <Line
+            type="monotone"
+            dataKey="value"
             stroke={color}
             strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            dot={<CustomDot fill={color} />}
+            activeDot={{ r: 4, fill: color, stroke: 'white', strokeWidth: 2 }}
+            connectNulls={false}
           />
-          {normalizedData.map((y, index) => (
-            <circle
-              key={index}
-              cx={5 + index * stepX}
-              cy={height - y}
-              r="2"
-              fill={color}
-            />
-          ))}
-        </svg>
-      </div>
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
-}
+});
+Sparkline.displayName = 'Sparkline';
+
+export default Sparkline;

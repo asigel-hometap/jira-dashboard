@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { WorkloadData } from '@/types/jira';
 import Sparkline from '@/components/Sparkline';
 import HealthBadges from '@/components/HealthBadges';
+import DateRangeFilter from '@/components/DateRangeFilter';
 
 interface DataContext {
   lastUpdated: Date;
@@ -18,6 +19,7 @@ export default function Home() {
   const [dataContext, setDataContext] = useState<DataContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<{ startDate: string; endDate: string } | null>(null);
 
   const fetchWorkloadData = async () => {
     try {
@@ -54,16 +56,26 @@ export default function Home() {
 
   const fetchTrendsData = async () => {
     try {
+      console.log('Fetching trends data...');
       const response = await fetch(`/api/workload-trends`);
       const result = await response.json();
       
+      console.log('Trends data result:', result);
       if (result.success) {
         setTrendsData(result.data);
+        console.log('Trends data set:', result.data);
       }
     } catch (err) {
       console.error('Error fetching trends data:', err);
     }
   };
+
+  const handleDateRangeChange = useCallback((startDate: string, endDate: string) => {
+    setDateRange({ startDate, endDate });
+  }, []);
+
+  // Memoize dateRange to prevent infinite re-renders
+  const memoizedDateRange = useMemo(() => dateRange, [dateRange?.startDate, dateRange?.endDate]);
 
   useEffect(() => {
     fetchWorkloadData();
@@ -71,9 +83,16 @@ export default function Home() {
     fetchDataContext();
   }, []);
 
-  // Helper function to get trend data for a team member
-  const getTrendData = (teamMember: string): number[] => {
-    if (!trendsData) return [];
+  // Create a stable list of team member names to avoid dependency on workloadData array
+  const teamMemberNames = useMemo(() => {
+    return workloadData.map(member => member.teamMember);
+  }, [workloadData]);
+
+  // Memoized trend data calculation to prevent infinite re-renders
+  const trendDataMap = useMemo(() => {
+    if (!trendsData) {
+      return new Map();
+    }
     
     const nameMap: { [key: string]: string } = {
       'Adam Sigel': 'adam',
@@ -85,15 +104,47 @@ export default function Home() {
       'Sanela Smaka': 'sanela'
     };
     
-    const key = nameMap[teamMember];
-    if (!key) return [];
+    const map = new Map();
     
-    const data = trendsData[key as keyof typeof trendsData];
-    if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'number') {
-      return data as number[];
-    }
-    return [];
-  };
+    teamMemberNames.forEach((teamMember) => {
+      const key = nameMap[teamMember];
+      if (!key) {
+        map.set(teamMember, { data: [], dates: [] });
+        return;
+      }
+      
+      const data = trendsData[key as keyof typeof trendsData];
+      const dates = trendsData.dates || [];
+      
+      if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'number') {
+        let filteredData = data as number[];
+        let filteredDates = dates as unknown as string[];
+        
+        // Apply date range filter if set
+        if (memoizedDateRange) {
+          const startDate = new Date(memoizedDateRange.startDate);
+          const endDate = new Date(memoizedDateRange.endDate);
+          
+          const filteredIndices: number[] = [];
+          filteredDates.forEach((date, index) => {
+            const currentDate = new Date(date);
+            if (currentDate >= startDate && currentDate <= endDate) {
+              filteredIndices.push(index);
+            }
+          });
+          
+          filteredData = filteredIndices.map(index => filteredData[index]);
+          filteredDates = filteredIndices.map(index => filteredDates[index]);
+        }
+        
+        map.set(teamMember, { data: filteredData, dates: filteredDates });
+      } else {
+        map.set(teamMember, { data: [], dates: [] });
+      }
+    });
+    
+    return map;
+  }, [trendsData, teamMemberNames, memoizedDateRange]);
 
   if (loading) {
     return (
@@ -159,6 +210,17 @@ export default function Home() {
             Team Workload Overview
           </h2>
           
+          {/* Date Range Filter */}
+          {trendsData && trendsData.dates && (
+            <div className="mb-6">
+              <DateRangeFilter
+                onDateRangeChange={handleDateRangeChange}
+                availableDates={trendsData.dates as unknown as string[]}
+                className="max-w-2xl"
+              />
+            </div>
+          )}
+          
           <div className="grid grid-cols-1 gap-6">
             {workloadData.map((member) => (
               <div
@@ -177,42 +239,47 @@ export default function Home() {
                   </div>
                 )}
                 
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-medium text-gray-700">
-                        {member.teamMember.split(' ').map(n => n[0]).join('')}
-                      </span>
+                <div className="flex gap-6">
+                  {/* Left side: Team member info and project health */}
+                  <div className="flex-1 space-y-4">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-medium text-gray-700">
+                            {member.teamMember.split(' ').map(n => n[0]).join('')}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="ml-4">
+                        <h3 className="text-sm font-medium text-gray-900">
+                          {member.teamMember}
+                        </h3>
+                        <p className="text-2xl font-semibold text-gray-900">
+                          {member.activeProjectCount}
+                        </p>
+                        <p className="text-sm text-gray-500">active projects</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs text-gray-500 mb-2">Project Health</div>
+                      <HealthBadges healthBreakdown={member.healthBreakdown} />
                     </div>
                   </div>
-                  <div className="ml-4">
-                    <h3 className="text-sm font-medium text-gray-900">
-                      {member.teamMember}
-                    </h3>
-                    <p className="text-2xl font-semibold text-gray-900">
-                      {member.activeProjectCount}
-                    </p>
-                    <p className="text-sm text-gray-500">active projects</p>
-                  </div>
-                </div>
 
-                <div className="mt-4">
-                  {/* Workload Trend Sparkline */}
-                  <div className="mb-3">
-                    <div className="text-xs text-gray-500 mb-1">Workload Trend</div>
-                    <Sparkline 
-                      data={getTrendData(member.teamMember)}
-                      width={400}
-                      height={40}
-                      color={member.isOverloaded ? '#EF4444' : '#3B82F6'}
-                      strokeWidth={2}
-                      showTooltip={true}
-                    />
-                  </div>
-
-                  <div className="mt-3">
-                    <div className="text-xs text-gray-500 mb-2">Project Health</div>
-                    <HealthBadges healthBreakdown={member.healthBreakdown} />
+                  {/* Right side: Workload Trend Sparkline */}
+                  <div className="flex-1 max-w-2xl">
+                    <div className="text-xs text-gray-500 mb-2">Workload Trend</div>
+                    <div className="bg-gray-50 rounded-lg p-3">
+                              <Sparkline
+                                data={trendDataMap.get(member.teamMember)?.data || []}
+                                dates={trendDataMap.get(member.teamMember)?.dates || []}
+                                height={120}
+                                color={member.isOverloaded ? '#EF4444' : '#3B82F6'}
+                                strokeWidth={2}
+                                showTooltip={true}
+                              />
+                    </div>
                   </div>
                 </div>
               </div>

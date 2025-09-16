@@ -1277,7 +1277,7 @@ export class DataProcessor {
       
       // Apply filters
       if (filters.assignees && filters.assignees.length > 0) {
-        allIssues = allIssues.filter(issue => filters.assignees!.includes(issue.assignee));
+        allIssues = allIssues.filter(issue => issue.assignee && filters.assignees!.includes(issue.assignee));
         console.log(`Filtered by assignees [${filters.assignees.join(', ')}]: ${allIssues.length} issues`);
       }
       

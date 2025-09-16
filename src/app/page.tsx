@@ -196,18 +196,24 @@ export default function Home() {
 
   return (
     <div className="space-y-6">
-      {/* Data Context Header */}
-      {dataContext && (
-        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-sm font-medium text-blue-800">
-                Data Last Updated: {new Date(dataContext.lastUpdated).toLocaleString()}
-              </h3>
-              <p className="text-sm text-blue-600 mt-1">
-                Source: {dataContext.dataSource}
-              </p>
-            </div>
+              {/* Data Context Header */}
+              {dataContext && (
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-sm font-medium text-blue-800">
+                        Data Last Updated: {new Date(dataContext.lastUpdated).toLocaleString()}
+                      </h3>
+                      <p className="text-sm text-blue-600 mt-1">
+                        Source: {dataContext.dataSource}
+                      </p>
+                      {(dataContext as any).historicalDataThrough && (
+                        <p className="text-xs text-blue-500 mt-1">
+                          Historical data through: {new Date((dataContext as any).historicalDataThrough).toLocaleDateString()}
+                          {(dataContext as any).realTimeDataAvailable && ' • Real-time data active'}
+                        </p>
+                      )}
+                    </div>
             <div className="flex space-x-2">
               <button
                 onClick={fetchWorkloadData}

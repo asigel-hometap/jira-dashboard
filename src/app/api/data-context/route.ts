@@ -6,15 +6,26 @@ export async function GET(request: NextRequest) {
     // Initialize database if not already done
     await initializeDatabase();
     
-    // Try to get real data context
+    // Get hybrid data context
     try {
       const capacityData = await getDatabaseService().getCapacityData();
-      const latestData = capacityData[capacityData.length - 1];
+      const lastHistoricalData = capacityData[capacityData.length - 1];
+      const currentDate = new Date();
       
-      if (latestData) {
+      if (lastHistoricalData) {
+        // Calculate if we have real-time data
+        const daysSinceLastHistorical = Math.floor(
+          (currentDate.getTime() - lastHistoricalData.date.getTime()) / (24 * 60 * 60 * 1000)
+        );
+        const hasRealTimeData = daysSinceLastHistorical >= 7;
+        
         const dataContext = {
-          lastUpdated: latestData.date,
-          dataSource: 'PM Capacity Tracking CSV (Historical Data)'
+          lastUpdated: hasRealTimeData ? currentDate : lastHistoricalData.date,
+          dataSource: hasRealTimeData 
+            ? 'Hybrid: Historical CSV + Real-time Jira Data' 
+            : 'PM Capacity Tracking CSV (Historical Data)',
+          historicalDataThrough: lastHistoricalData.date,
+          realTimeDataAvailable: hasRealTimeData
         };
         
         return NextResponse.json({ 

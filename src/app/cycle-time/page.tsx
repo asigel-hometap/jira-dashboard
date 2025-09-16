@@ -265,9 +265,9 @@ export default function CycleTimePage() {
               <div className="space-y-4 text-sm text-blue-800">
                 <div>
                   <h4 className="font-medium mb-2">Discovery Cycle Definition</h4>
-                  <p className="mb-2">
-                    A discovery cycle starts when a project transitions to any discovery status (02 Generative Discovery, 04 Problem Discovery, or 05 Solution Discovery) for the first time and ends when it transitions to a build or resolved status (06 Build, 07 Beta, 08 Live, or 09 Live, Won't Do).
-                  </p>
+                    <p className="mb-2">
+                      A discovery cycle starts when a project transitions to any discovery status (02 Generative Discovery, 04 Problem Discovery, or 05 Solution Discovery) for the first time and ends when it transitions to a build or resolved status (06 Build, 07 Beta, 08 Live, or 09 Live, Won&apos;t Do).
+                    </p>
                 </div>
 
                 <div>

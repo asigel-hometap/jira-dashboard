@@ -212,7 +212,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
     }
     
     const dates = [];
-    let current = new Date(start);
+    const current = new Date(start);
     while (current <= end) {
       dates.push(new Date(current));
       current.setDate(current.getDate() + intervalDays);

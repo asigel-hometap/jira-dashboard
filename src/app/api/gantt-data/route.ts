@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     if (assignee) {
       console.log(`Filtering by assignee: "${assignee}"`);
       filteredProjects = discoveryProjects.filter(project => 
-        project.assignee.toLowerCase().includes(assignee.toLowerCase())
+        project.assignee && project.assignee.toLowerCase().includes(assignee.toLowerCase())
       );
       console.log(`Filtered to ${filteredProjects.length} projects for assignee "${assignee}"`);
     }

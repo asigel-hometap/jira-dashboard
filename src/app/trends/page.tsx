@@ -83,7 +83,6 @@ export default function TrendsPage() {
       if (filters.assignees.length > 0) {
         filters.assignees.forEach(assignee => params.append('assignee', assignee));
       }
-      if (filters.team) params.append('team', filters.team);
       if (filters.bizChamp) params.append('bizChamp', filters.bizChamp);
       
       const response = await fetch(`/api/trends?${params.toString()}`);

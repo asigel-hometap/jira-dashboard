@@ -21,6 +21,7 @@ interface GanttChartProps {
 const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
   const [hoveredProject, setHoveredProject] = useState<string | null>(null);
   const [hiddenLegendItems, setHiddenLegendItems] = useState<Set<string>>(new Set());
+  const [showInactivePeriods, setShowInactivePeriods] = useState<boolean>(false);
 
   // Transform data for the chart
   const chartData = useMemo(() => {
@@ -65,18 +66,85 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
         const startDate = parseISO(project.discoveryStart);
         const endDate = parseISO(project.discoveryEnd);
         const duration = differenceInDays(endDate, startDate);
+        const calendarDays = project.calendarDays;
+        const activeDays = project.activeDays;
+        const inactiveDays = calendarDays - activeDays;
+        
+        // Calculate inactive period segments
+        const inactivePeriods = [];
+        if (showInactivePeriods && inactiveDays > 0 && calendarDays > 0) {
+          // For simplicity, we'll distribute inactive days evenly throughout the discovery period
+          // In a more sophisticated implementation, we'd use the actual changelog data
+          const totalDuration = endDate.getTime() - startDate.getTime();
+          const inactiveDuration = (inactiveDays / calendarDays) * totalDuration;
+          
+          // Create segments representing inactive periods
+          // We'll create 2-3 segments to represent the inactive periods
+          const segmentCount = Math.min(3, Math.max(1, Math.ceil(inactiveDays / 7))); // Max 3 segments, at least 1
+          const segmentDuration = inactiveDuration / segmentCount;
+          
+          // Ensure segments don't overlap by creating proper gaps
+          const availableSpace = totalDuration - inactiveDuration;
+          const gapSize = availableSpace / (segmentCount + 1);
+          
+          for (let i = 0; i < segmentCount; i++) {
+            const segmentStart = startDate.getTime() + (i + 1) * gapSize + i * segmentDuration;
+            const segmentEnd = segmentStart + segmentDuration;
+            
+            const leftPercent = ((segmentStart - startDate.getTime()) / totalDuration) * 100;
+            const widthPercent = (segmentDuration / totalDuration) * 100;
+            
+            // Ensure segments stay within bar boundaries and don't overlap
+            const maxLeftPercent = 100 - widthPercent;
+            const clampedLeftPercent = Math.min(leftPercent, maxLeftPercent);
+            
+            // Check for overlap with previous segments
+            const currentLeft = Math.max(0, clampedLeftPercent);
+            const currentRight = currentLeft + Math.min(widthPercent, 100 - currentLeft);
+            
+            // If this segment would overlap with the previous one, adjust its position
+            if (i > 0) {
+              const prevSegment = inactivePeriods[i - 1];
+              const prevRight = prevSegment.leftPercent + prevSegment.widthPercent;
+              if (currentLeft < prevRight) {
+                // Move this segment to start after the previous one ends
+                const adjustedLeft = Math.min(prevRight + 1, maxLeftPercent); // 1% gap
+                const adjustedWidth = Math.min(widthPercent, 100 - adjustedLeft);
+                
+                inactivePeriods.push({
+                  start: new Date(segmentStart),
+                  end: new Date(segmentEnd),
+                  leftPercent: adjustedLeft,
+                  widthPercent: adjustedWidth
+                });
+                continue;
+              }
+            }
+            
+            inactivePeriods.push({
+              start: new Date(segmentStart),
+              end: new Date(segmentEnd),
+              leftPercent: currentLeft,
+              widthPercent: Math.min(widthPercent, 100 - currentLeft)
+            });
+          }
+        }
         
         return {
           ...project,
           index,
           startDate,
           endDate,
-          duration
+          duration,
+          calendarDays,
+          activeDays,
+          inactiveDays,
+          inactivePeriods
         };
       }),
       dateRange: { start: extendedStart, end: extendedEnd }
     };
-  }, [data, hiddenLegendItems]);
+  }, [data, hiddenLegendItems, showInactivePeriods]);
 
   // Get unique end date logic types for legend
   const endDateLogicTypes = useMemo(() => {
@@ -167,6 +235,16 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
       <div className="mb-4 p-3 bg-gray-50 rounded-lg">
         <h4 className="text-sm font-medium text-gray-700 mb-2">Legend (click to toggle)</h4>
         <div className="flex flex-wrap gap-4 text-sm">
+          {/* Inactive Periods Toggle */}
+          <div 
+            className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => setShowInactivePeriods(!showInactivePeriods)}
+          >
+            <div className={`w-3 h-3 rounded ${showInactivePeriods ? 'bg-gray-500' : 'bg-gray-200 border border-gray-400'}`} />
+            <span className="text-gray-600">
+              Inactive Periods
+            </span>
+          </div>
           {endDateLogicTypes.map((type) => {
             const isHidden = hiddenLegendItems.has(type);
             return (
@@ -208,17 +286,18 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
       {/* Chart Container */}
       <div className="border border-gray-200 rounded-lg overflow-hidden">
         {/* Timeline Header */}
-        <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+        <div className="bg-gray-50 px-4 py-4 border-b border-gray-200">
           <div className="flex">
             <div className="w-48 flex-shrink-0"></div> {/* Space for project labels */}
-            <div className="flex-1 relative">
+            <div className="flex-1 relative h-8">
               {timelineDates.map((date, index) => (
                 <div
                   key={index}
-                  className="absolute text-xs text-gray-600 whitespace-nowrap"
+                  className="absolute text-xs text-gray-600 whitespace-nowrap leading-tight"
                   style={{
                     left: `${(index / Math.max(timelineDates.length - 1, 1)) * 100}%`,
-                    transform: 'translateX(-50%)'
+                    transform: 'translateX(-50%)',
+                    top: '0.25rem'
                   }}
                 >
                   {format(date, 'MMM dd')}
@@ -259,10 +338,27 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
                     }`}
                     style={getBarStyle(project)}
                   >
+                    {/* Inactive Period Segments */}
+                    {showInactivePeriods && project.inactivePeriods && project.inactivePeriods.length > 0 && (
+                      <>
+                        {project.inactivePeriods.map((period, periodIndex) => (
+                          <div
+                            key={periodIndex}
+                            className="absolute top-0 h-6 bg-gray-500 opacity-60 rounded-sm"
+                            style={{
+                              left: `${period.leftPercent}%`,
+                              width: `${period.widthPercent}%`
+                            }}
+                            title={`Inactive period: ${format(period.start, 'MMM dd')} - ${format(period.end, 'MMM dd')}`}
+                          />
+                        ))}
+                      </>
+                    )}
+                    
                     {/* End Date Logic Marker */}
                     {!project.isStillInDiscovery && (
                       <div
-                        className="w-2 h-2 rounded-full border border-white"
+                        className="w-2 h-2 rounded-full border border-white relative z-10"
                         style={{ backgroundColor: getEndDateLogicColor(project.endDateLogic) }}
                         title={`End: ${format(project.endDate, 'MMM dd, yyyy')} (${project.endDateLogic})`}
                       />
@@ -270,7 +366,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
                     {/* Still in Discovery Indicator */}
                     {project.isStillInDiscovery && (
                       <div
-                        className="w-2 h-2 rounded-full border border-white bg-yellow-400"
+                        className="w-2 h-2 rounded-full border border-white bg-yellow-400 relative z-10"
                         title={`Still in Discovery (as of ${format(project.endDate, 'MMM dd, yyyy')})`}
                       />
                     )}
@@ -288,6 +384,9 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
                         <div><strong>Duration:</strong> {project.duration} days</div>
                         <div><strong>Calendar Days:</strong> {project.calendarDays}</div>
                         <div><strong>Active Days:</strong> {project.activeDays}</div>
+                        {project.inactiveDays > 0 && (
+                          <div><strong>Inactive Days:</strong> {project.inactiveDays}</div>
+                        )}
                         <div><strong>End Logic:</strong> {project.endDateLogic}</div>
                       </div>
                     </div>

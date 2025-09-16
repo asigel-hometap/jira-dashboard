@@ -31,12 +31,14 @@ export async function GET(request: NextRequest) {
     );
     console.log(`Filtered to ${discoveryProjects.length} discovery projects`);
 
-    // Apply assignee filter if provided
+    // Apply assignee filter if provided (case-insensitive partial match)
     let filteredProjects = discoveryProjects;
     if (assignee) {
+      console.log(`Filtering by assignee: "${assignee}"`);
       filteredProjects = discoveryProjects.filter(project => 
-        project.assignee === assignee
+        project.assignee.toLowerCase().includes(assignee.toLowerCase())
       );
+      console.log(`Filtered to ${filteredProjects.length} projects for assignee "${assignee}"`);
     }
 
     // Get discovery cycle info for each project (same as table)

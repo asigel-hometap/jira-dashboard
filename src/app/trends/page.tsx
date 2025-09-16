@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
@@ -36,19 +36,21 @@ export default function TrendsPage() {
   const [error, setError] = useState<string | null>(null);
   const [seriesType, setSeriesType] = useState<'health' | 'status'>('health');
   const [filters, setFilters] = useState({
-    assignee: '',
-    team: '',
+    assignees: [] as string[],
+    bizChamp: ''
+  });
+  const [tempFilters, setTempFilters] = useState({
+    assignees: [] as string[],
     bizChamp: ''
   });
   const [availableFilters, setAvailableFilters] = useState({
     assignees: [] as string[],
-    teams: [] as string[],
     bizChamps: [] as string[]
   });
   const [loadingStep, setLoadingStep] = useState(0);
   const [loadingText, setLoadingText] = useState('');
 
-  const fetchTrendData = async () => {
+  const fetchTrendData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -78,7 +80,9 @@ export default function TrendsPage() {
       
       // Build query parameters
       const params = new URLSearchParams();
-      if (filters.assignee) params.append('assignee', filters.assignee);
+      if (filters.assignees.length > 0) {
+        filters.assignees.forEach(assignee => params.append('assignee', assignee));
+      }
       if (filters.team) params.append('team', filters.team);
       if (filters.bizChamp) params.append('bizChamp', filters.bizChamp);
       
@@ -104,15 +108,32 @@ export default function TrendsPage() {
       setLoading(false);
       setLoadingStep(0);
     }
-  };
-
-  useEffect(() => {
-    fetchTrendData();
-  }, []);
-
-  useEffect(() => {
-    fetchTrendData();
   }, [filters]);
+
+  useEffect(() => {
+    fetchTrendData();
+  }, [fetchTrendData]);
+
+  // Initialize temp filters when available filters change
+  useEffect(() => {
+    if (availableFilters.assignees.length > 0) {
+      // If no filters are currently applied, select all assignees by default
+      if (filters.assignees.length === 0 && !filters.bizChamp) {
+        setTempFilters(prev => ({
+          ...prev,
+          assignees: availableFilters.assignees
+        }));
+      } else {
+        // Otherwise, filter out any assignees that are no longer available
+        setTempFilters(prev => ({
+          ...prev,
+          assignees: prev.assignees.filter(assignee => 
+            availableFilters.assignees.includes(assignee)
+          )
+        }));
+      }
+    }
+  }, [availableFilters.assignees, filters.assignees.length, filters.bizChamp]);
 
   // Cleanup intervals on unmount
   useEffect(() => {
@@ -120,6 +141,25 @@ export default function TrendsPage() {
       // This will be handled by the fetchTrendData function
     };
   }, []);
+
+  const handleApplyFilters = () => {
+    setFilters(tempFilters);
+  };
+
+  const handleClearFilters = () => {
+    const clearedFilters = { assignees: availableFilters.assignees, bizChamp: '' };
+    setTempFilters(clearedFilters);
+    setFilters(clearedFilters);
+  };
+
+  const handleAssigneeToggle = (assignee: string) => {
+    setTempFilters(prev => ({
+      ...prev,
+      assignees: prev.assignees.includes(assignee)
+        ? prev.assignees.filter(a => a !== assignee)
+        : [...prev.assignees, assignee]
+    }));
+  };
 
   const getChartData = () => {
     const labels = trendData.map(d => d.week);
@@ -279,7 +319,7 @@ export default function TrendsPage() {
         {/* Loading Text */}
         <div className="text-center space-y-2">
           <div className="text-lg font-medium text-gray-900">
-            {filters.assignee || filters.team || filters.bizChamp 
+            {filters.assignees.length > 0 || filters.bizChamp 
               ? 'Analyzing Historical Data...' 
               : 'Preparing Trend Analysis...'
             }
@@ -291,7 +331,7 @@ export default function TrendsPage() {
         
         {/* Additional Info */}
         <div className="text-xs text-gray-400 text-center max-w-md">
-          {filters.assignee || filters.team || filters.bizChamp 
+          {filters.assignees.length > 0 || filters.bizChamp 
             ? 'This may take a moment as we analyze historical changelog data for accurate trends.'
             : 'Using simplified analysis for faster loading. Apply filters for detailed historical analysis.'
           }
@@ -342,12 +382,12 @@ export default function TrendsPage() {
               </h2>
               <p className="text-sm text-gray-500 mt-1">
                 Weekly stacked bar chart showing project distribution
-                {!filters.assignee && !filters.team && !filters.bizChamp && (
+                {filters.assignees.length === 0 && !filters.bizChamp && (
                   <span className="ml-2 text-blue-600 font-medium">
                     (Simplified analysis - shows project lifecycle)
                   </span>
                 )}
-                {(filters.assignee || filters.team || filters.bizChamp) && (
+                {(filters.assignees.length > 0 || filters.bizChamp) && (
                   <span className="ml-2 text-orange-600 font-medium">
                     (Full historical analysis - may take longer)
                   </span>
@@ -373,52 +413,68 @@ export default function TrendsPage() {
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-medium text-gray-700">Filters</h3>
-                {(filters.assignee || filters.team || filters.bizChamp) && (
+                {(filters.assignees.length > 0 || filters.bizChamp) && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                     Active
                   </span>
                 )}
               </div>
-              <button
-                onClick={() => setFilters({ assignee: '', team: '', bizChamp: '' })}
-                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-              >
-                Clear All Filters
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleClearFilters}
+                  className="text-sm text-gray-600 hover:text-gray-800 font-medium"
+                >
+                  Show All
+                </button>
+                <button
+                  onClick={handleApplyFilters}
+                  disabled={loading}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+                >
+                  {loading ? 'Applying...' : 'Apply Filters'}
+                </button>
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Assignee Filter */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Assignee
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Assignees {tempFilters.assignees.length > 0 && `(${tempFilters.assignees.length} selected)`}
                 </label>
-                <select
-                  value={filters.assignee}
-                  onChange={(e) => setFilters(prev => ({ ...prev, assignee: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All Assignees</option>
-                  {availableFilters.assignees.map(assignee => (
-                    <option key={assignee} value={assignee}>{assignee}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Team Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Team
-                </label>
-                <select
-                  value={filters.team}
-                  onChange={(e) => setFilters(prev => ({ ...prev, team: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All Teams</option>
-                  {availableFilters.teams.map(team => (
-                    <option key={team} value={team}>{team}</option>
-                  ))}
-                </select>
+                <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-md p-3 bg-gray-50">
+                  <div className="space-y-2">
+                    {availableFilters.assignees.map(assignee => (
+                      <label key={assignee} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
+                        <input
+                          type="checkbox"
+                          checked={tempFilters.assignees.includes(assignee)}
+                          onChange={() => handleAssigneeToggle(assignee)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="text-sm text-gray-900">{assignee}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                {tempFilters.assignees.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {tempFilters.assignees.map(assignee => (
+                      <span
+                        key={assignee}
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                      >
+                        {assignee}
+                        <button
+                          onClick={() => handleAssigneeToggle(assignee)}
+                          className="ml-1 text-blue-600 hover:text-blue-800"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Business Champion Filter */}
@@ -427,9 +483,9 @@ export default function TrendsPage() {
                   Business Champion
                 </label>
                 <select
-                  value={filters.bizChamp}
-                  onChange={(e) => setFilters(prev => ({ ...prev, bizChamp: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={tempFilters.bizChamp}
+                  onChange={(e) => setTempFilters(prev => ({ ...prev, bizChamp: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Business Champions</option>
                   {availableFilters.bizChamps.map(bizChamp => (

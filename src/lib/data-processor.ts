@@ -1243,8 +1243,7 @@ export class DataProcessor {
    * Analyzes historical changelog data to determine project counts by health and status
    */
   async getTrendData(filters: {
-    assignee?: string;
-    team?: string;
+    assignees?: string[];
     bizChamp?: string;
   } = {}): Promise<Array<{
     week: string;
@@ -1277,15 +1276,11 @@ export class DataProcessor {
       console.log(`Analyzing trends for ${allIssues.length} issues`);
       
       // Apply filters
-      if (filters.assignee) {
-        allIssues = allIssues.filter(issue => issue.assignee === filters.assignee);
-        console.log(`Filtered by assignee '${filters.assignee}': ${allIssues.length} issues`);
+      if (filters.assignees && filters.assignees.length > 0) {
+        allIssues = allIssues.filter(issue => filters.assignees!.includes(issue.assignee));
+        console.log(`Filtered by assignees [${filters.assignees.join(', ')}]: ${allIssues.length} issues`);
       }
       
-      // Note: Team filtering not implemented - no team data in current Issue type
-      if (filters.team) {
-        console.log(`Team filtering requested but not implemented: '${filters.team}'`);
-      }
       
       if (filters.bizChamp) {
         allIssues = allIssues.filter(issue => issue.bizChamp === filters.bizChamp);
@@ -1297,8 +1292,15 @@ export class DataProcessor {
       
       const trendData = [];
       
-      // Check if we have any filters applied
-      const hasFilters = filters.assignee || filters.team || filters.bizChamp;
+      // Get available assignees to check if all are selected
+      const availableAssignees = [...new Set(allIssues.map(issue => issue.assignee).filter(Boolean))];
+      
+      // Check if we have any meaningful filters applied
+      // If all assignees are selected, treat it as no filter (use simplified analysis)
+      const allAssigneesSelected = filters.assignees && filters.assignees.length === availableAssignees.length;
+      const hasFilters = (filters.assignees && filters.assignees.length > 0 && !allAssigneesSelected) || filters.bizChamp;
+      
+      console.log(`Filter analysis: ${filters.assignees?.length || 0} assignees selected, ${availableAssignees.length} total available, allSelected: ${allAssigneesSelected}, hasFilters: ${hasFilters}`);
       
       if (hasFilters) {
         // Use historical analysis for filtered data (slower but accurate)
@@ -1766,7 +1768,6 @@ export class DataProcessor {
    */
   async getAvailableFilters(): Promise<{
     assignees: string[];
-    teams: string[];
     bizChamps: string[];
   }> {
     try {
@@ -1779,14 +1780,12 @@ export class DataProcessor {
       
       return {
         assignees,
-        teams: [], // Team filtering not implemented - no team data in current Issue type
         bizChamps
       };
     } catch (error) {
       console.error('Error getting available filters:', error);
       return {
         assignees: [],
-        teams: [],
         bizChamps: []
       };
     }

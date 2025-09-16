@@ -9,14 +9,12 @@ export async function GET(request: NextRequest) {
     
     // Extract filter parameters
     const { searchParams } = new URL(request.url);
-    const assignee = searchParams.get('assignee') || '';
-    const team = searchParams.get('team') || '';
+    const assignees = searchParams.getAll('assignee');
     const bizChamp = searchParams.get('bizChamp') || '';
     
     // Get trend data for the past 12 weeks with filters
     const trendData = await dataProcessor.getTrendData({
-      assignee,
-      team,
+      assignees,
       bizChamp
     });
     

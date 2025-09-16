@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import GanttChart from '@/components/GanttChart';
 
 interface DiscoveryCycleDetail {
   key: string;
@@ -20,6 +21,7 @@ type SortDirection = 'asc' | 'desc';
 export default function CycleTimeDetailsPage() {
   const [discoveryDetails, setDiscoveryDetails] = useState<DiscoveryCycleDetail[]>([]);
   const [filteredDetails, setFilteredDetails] = useState<DiscoveryCycleDetail[]>([]);
+  const [ganttData, setGanttData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -49,6 +51,26 @@ export default function CycleTimeDetailsPage() {
       setError('Network error fetching data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchGanttData = async () => {
+    try {
+      const params = new URLSearchParams();
+      params.append('quarter', 'Q3_2025'); // Default to Q3 2025 for now
+      
+      if (assigneeFilter) {
+        params.append('assignee', assigneeFilter);
+      }
+      
+      const response = await fetch(`/api/gantt-data?${params.toString()}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setGanttData(result.data);
+      }
+    } catch (err) {
+      console.error('Error fetching Gantt data:', err);
     }
   };
 
@@ -181,7 +203,12 @@ export default function CycleTimeDetailsPage() {
 
   useEffect(() => {
     fetchDiscoveryDetails();
+    fetchGanttData();
   }, []);
+
+  useEffect(() => {
+    fetchGanttData();
+  }, [assigneeFilter]);
 
   if (loading) {
     return (
@@ -308,6 +335,12 @@ export default function CycleTimeDetailsPage() {
                 </button>
               </div>
             )}
+          </div>
+          
+          {/* Gantt Chart */}
+          <div className="mb-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Discovery Cycle Timeline</h3>
+            <GanttChart data={ganttData} height={400} />
           </div>
           
           {filteredDetails.length === 0 ? (

@@ -224,7 +224,7 @@ export default function ProjectsAtRiskPage() {
                         onClick={() => toggleRowExpansion(project.key)}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4 flex-1 min-w-0">
+                          <div className="flex items-center space-x-6 flex-1 min-w-0">
                             {/* Key */}
                             <div className="w-20 flex-shrink-0">
                               <a 
@@ -239,7 +239,7 @@ export default function ProjectsAtRiskPage() {
                             </div>
                             
                             {/* Name */}
-                            <div className="flex-1 min-w-0 max-w-xs">
+                            <div className="flex-1 min-w-0 max-w-sm">
                               <p className="text-sm text-gray-900 truncate" title={project.name}>
                                 {project.name}
                               </p>
@@ -266,7 +266,7 @@ export default function ProjectsAtRiskPage() {
                             </div>
                             
                             {/* Current Status */}
-                            <div className="w-32 flex-shrink-0">
+                            <div className="w-48 flex-shrink-0">
                               <p className="text-sm text-gray-900 truncate" title={project.currentStatus}>
                                 {project.currentStatus}
                               </p>

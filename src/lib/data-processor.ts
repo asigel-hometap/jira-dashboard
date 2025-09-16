@@ -565,6 +565,172 @@ export class DataProcessor {
     }
   }
 
+  /**
+   * Get the first date a project entered a risk status (At Risk or Off Track)
+   */
+  async getFirstRiskDate(issueKey: string): Promise<Date | null> {
+    try {
+      const changelog = await getIssueChangelog(issueKey);
+      const histories = changelog.values || changelog.histories || [];
+      
+      // Filter for health field changes
+      const healthChanges = histories
+        .filter((history: any) => 
+          history.items.some((item: any) => 
+            item.field === 'Health' || 
+            item.fieldId === 'customfield_10238' ||
+            (item.fieldtype === 'custom' && item.fieldId === 'customfield_10238')
+          )
+        )
+        .map((history: any) => {
+          const healthItem = history.items.find((item: any) => 
+            item.field === 'Health' || 
+            item.fieldId === 'customfield_10238' ||
+            (item.fieldtype === 'custom' && item.fieldId === 'customfield_10238')
+          );
+          return {
+            date: new Date(history.created),
+            from: healthItem?.fromString || null,
+            to: healthItem?.toString || null
+          };
+        })
+        .sort((a: any, b: any) => a.date.getTime() - b.date.getTime());
+      
+      // Find the first transition to "At Risk" or "Off Track"
+      const firstRiskTransition = healthChanges.find(change => 
+        change.to === 'At Risk' || change.to === 'Off Track'
+      );
+      
+      return firstRiskTransition ? firstRiskTransition.date : null;
+      
+    } catch (error) {
+      console.error(`Error getting first risk date for ${issueKey}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get a visual representation of the project's health history
+   * Returns an array of health states with emojis for visualization
+   */
+  async getRiskHistoryVisualization(issueKey: string): Promise<{
+    history: Array<{date: Date, health: string, emoji: string}>;
+    summary: string;
+  }> {
+    try {
+      const changelog = await getIssueChangelog(issueKey);
+      const histories = changelog.values || changelog.histories || [];
+      
+      // Filter for health field changes
+      const healthChanges = histories
+        .filter((history: any) => 
+          history.items.some((item: any) => 
+            item.field === 'Health' || 
+            item.fieldId === 'customfield_10238' ||
+            (item.fieldtype === 'custom' && item.fieldId === 'customfield_10238')
+          )
+        )
+        .map((history: any) => {
+          const healthItem = history.items.find((item: any) => 
+            item.field === 'Health' || 
+            item.fieldId === 'customfield_10238' ||
+            (item.fieldtype === 'custom' && item.fieldId === 'customfield_10238')
+          );
+          return {
+            date: new Date(history.created),
+            from: healthItem?.fromString || null,
+            to: healthItem?.toString || null
+          };
+        })
+        .sort((a: any, b: any) => a.date.getTime() - b.date.getTime());
+      
+      if (healthChanges.length === 0) {
+        return {
+          history: [],
+          summary: 'No health history available'
+        };
+      }
+
+      // Create health history with emojis
+      const healthEmojiMap: { [key: string]: string } = {
+        'On Track': '🟢',
+        'At Risk': '🟡', 
+        'Off Track': '🔴',
+        'On Hold': '⏸️',
+        'Complete': '✅',
+        'Mystery': '🟣',
+        'Unknown': '⚪️'
+      };
+
+      const history = healthChanges.map(change => ({
+        date: change.date,
+        health: change.to || 'Unknown',
+        emoji: healthEmojiMap[change.to || 'Unknown'] || '⚪️'
+      }));
+
+      // Create summary string (last 10 changes to keep it manageable)
+      const recentHistory = history.slice(-10);
+      const summary = recentHistory.map(h => h.emoji).join(' ');
+
+      return {
+        history,
+        summary: summary || 'No recent changes'
+      };
+      
+    } catch (error) {
+      console.error(`Error getting risk history for ${issueKey}:`, error);
+      return {
+        history: [],
+        summary: 'Error loading history'
+      };
+    }
+  }
+
+  /**
+   * Get current health status for an issue (real-time)
+   */
+  async getCurrentHealthStatus(issueKey: string): Promise<string> {
+    try {
+      const changelog = await getIssueChangelog(issueKey);
+      const histories = changelog.values || changelog.histories || [];
+      
+      // Filter for health field changes
+      const healthChanges = histories
+        .filter((history: any) => 
+          history.items.some((item: any) => 
+            item.field === 'Health' || 
+            item.fieldId === 'customfield_10238' ||
+            (item.fieldtype === 'custom' && item.fieldId === 'customfield_10238')
+          )
+        )
+        .map((history: any) => {
+          const healthItem = history.items.find((item: any) => 
+            item.field === 'Health' || 
+            item.fieldId === 'customfield_10238' ||
+            (item.fieldtype === 'custom' && item.fieldId === 'customfield_10238')
+          );
+          return {
+            date: new Date(history.created),
+            from: healthItem?.fromString || null,
+            to: healthItem?.toString || null
+          };
+        })
+        .sort((a: any, b: any) => a.date.getTime() - b.date.getTime());
+      
+      if (healthChanges.length === 0) {
+        return 'Unknown';
+      }
+      
+      // Get the most recent health status
+      const latestChange = healthChanges[healthChanges.length - 1];
+      return latestChange.to || 'Unknown';
+      
+    } catch (error) {
+      console.error(`Error getting current health status for ${issueKey}:`, error);
+      return 'Unknown';
+    }
+  }
+
   async calculateDiscoveryCycleInfo(issueKey: string): Promise<{
     discoveryStartDate: Date | null;
     discoveryEndDate: Date | null;

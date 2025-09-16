@@ -8,12 +8,13 @@ interface ProjectAtRisk {
   assignee: string;
   currentHealth: string;
   currentStatus: string;
-  weeksAtRisk: number;
-  bizChamp: string;
+  firstRiskDate: string | null;
+  riskHistory: string;
+  riskHistoryDetails: Array<{date: string, health: string, emoji: string}>;
   jiraUrl: string;
 }
 
-type SortField = 'assignee' | 'currentHealth' | 'currentStatus' | 'weeksAtRisk' | 'bizChamp';
+type SortField = 'assignee' | 'currentHealth' | 'currentStatus';
 type SortDirection = 'asc' | 'desc';
 
 export default function ProjectsAtRiskPage() {
@@ -22,6 +23,7 @@ export default function ProjectsAtRiskPage() {
   const [error, setError] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   const fetchProjectsAtRisk = async () => {
     try {
@@ -50,6 +52,16 @@ export default function ProjectsAtRiskPage() {
     }
   };
 
+  const toggleRowExpansion = (projectKey: string) => {
+    const newExpandedRows = new Set(expandedRows);
+    if (newExpandedRows.has(projectKey)) {
+      newExpandedRows.delete(projectKey);
+    } else {
+      newExpandedRows.add(projectKey);
+    }
+    setExpandedRows(newExpandedRows);
+  };
+
   const getSortedProjects = () => {
     if (!sortField) return projectsAtRisk;
 
@@ -69,14 +81,6 @@ export default function ProjectsAtRiskPage() {
         case 'currentStatus':
           aValue = a.currentStatus;
           bValue = b.currentStatus;
-          break;
-        case 'weeksAtRisk':
-          aValue = a.weeksAtRisk;
-          bValue = b.weeksAtRisk;
-          break;
-        case 'bizChamp':
-          aValue = a.bizChamp;
-          bValue = b.bizChamp;
           break;
         default:
           return 0;
@@ -170,106 +174,155 @@ export default function ProjectsAtRiskPage() {
               No projects currently at risk
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Key
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleSort('assignee')}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>Assignee</span>
-                        {getSortIcon('assignee')}
+            <div>
+              {/* Risk History Legend */}
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Risk History Legend</h3>
+                <div className="flex items-center space-x-4 text-sm">
+                  <div className="flex items-center space-x-1">
+                    <span>🟢</span>
+                    <span className="text-gray-600">On Track</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span>🟡</span>
+                    <span className="text-gray-600">At Risk</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span>🔴</span>
+                    <span className="text-gray-600">Off Track</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span>⏸️</span>
+                    <span className="text-gray-600">On Hold</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span>✅</span>
+                    <span className="text-gray-600">Complete</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span>🟣</span>
+                    <span className="text-gray-600">Mystery</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span>⚪️</span>
+                    <span className="text-gray-600">Unknown</span>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Hover over the risk history to see dates and details
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                {getSortedProjects().map((project) => {
+                  const isExpanded = expandedRows.has(project.key);
+                  return (
+                    <div key={project.key} className="bg-white border border-gray-200 rounded-lg shadow-sm">
+                      {/* Main row - always visible */}
+                      <div 
+                        className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                        onClick={() => toggleRowExpansion(project.key)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4 flex-1 min-w-0">
+                            {/* Key */}
+                            <div className="w-20 flex-shrink-0">
+                              <a 
+                                href={project.jiraUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-sm font-medium text-blue-600 hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {project.key}
+                              </a>
+                            </div>
+                            
+                            {/* Name */}
+                            <div className="flex-1 min-w-0 max-w-xs">
+                              <p className="text-sm text-gray-900 truncate" title={project.name}>
+                                {project.name}
+                              </p>
+                            </div>
+                            
+                            {/* Assignee */}
+                            <div className="w-40 flex-shrink-0">
+                              <p className="text-sm text-gray-900 truncate" title={project.assignee}>
+                                {project.assignee}
+                              </p>
+                            </div>
+                            
+                            {/* Current Health */}
+                            <div className="w-20 flex-shrink-0">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                project.currentHealth === 'At Risk' 
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : project.currentHealth === 'Off Track'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {project.currentHealth}
+                              </span>
+                            </div>
+                            
+                            {/* Current Status */}
+                            <div className="w-32 flex-shrink-0">
+                              <p className="text-sm text-gray-900 truncate" title={project.currentStatus}>
+                                {project.currentStatus}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Expand/Collapse Icon */}
+                          <div className="flex-shrink-0 ml-4">
+                            <svg 
+                              className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                              fill="none" 
+                              stroke="currentColor" 
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
                       </div>
-                    </th>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleSort('currentHealth')}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>Current Health</span>
-                        {getSortIcon('currentHealth')}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleSort('currentStatus')}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>Current Status</span>
-                        {getSortIcon('currentStatus')}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleSort('weeksAtRisk')}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span># of Weeks at Risk</span>
-                        {getSortIcon('weeksAtRisk')}
-                      </div>
-                    </th>
-                    <th 
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                      onClick={() => handleSort('bizChamp')}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>Biz Champ</span>
-                        {getSortIcon('bizChamp')}
-                      </div>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {getSortedProjects().map((project) => (
-                    <tr key={project.key} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                        <a 
-                          href={project.jiraUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="hover:underline"
-                        >
-                          {project.key}
-                        </a>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                        {project.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {project.assignee}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          project.currentHealth === 'At Risk' 
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : project.currentHealth === 'Off Track'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {project.currentHealth}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {project.currentStatus}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {project.weeksAtRisk}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {project.bizChamp}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      
+                      {/* Expanded content */}
+                      {isExpanded && (
+                        <div className="px-4 pb-4 border-t border-gray-100 bg-gray-50">
+                          <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* First Risk Date */}
+                            <div>
+                              <h4 className="text-sm font-medium text-gray-700 mb-2">First Risk Date</h4>
+                              <p className="text-sm text-gray-900">
+                                {project.firstRiskDate 
+                                  ? new Date(project.firstRiskDate).toLocaleDateString()
+                                  : 'Unknown'
+                                }
+                              </p>
+                            </div>
+                            
+                            {/* Risk History */}
+                            <div>
+                              <h4 className="text-sm font-medium text-gray-700 mb-2">Risk History</h4>
+                              <div className="flex items-center space-x-1">
+                                <span className="text-lg" title={project.riskHistoryDetails.map(h => 
+                                  `${h.health} (${new Date(h.date).toLocaleDateString()})`
+                                ).join(', ')}>
+                                  {project.riskHistory}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Hover to see dates and details
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>

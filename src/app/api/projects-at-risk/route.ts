@@ -8,18 +8,39 @@ export async function GET(request: NextRequest) {
     const dbService = getDatabaseService();
     const dataProcessor = getDataProcessor();
     
-    // Get projects that have been At Risk or Off Track for 2+ consecutive weeks
-    const activeIssues = await dbService.getActiveIssues();
+    // Get all active issues from Jira API (using the working function)
+    const { getAllIssuesForCycleAnalysis } = await import('@/lib/jira-api');
+    const allJiraIssues = await getAllIssuesForCycleAnalysis();
     
-    // Filter for projects with At Risk or Off Track health
-    const atRiskProjects = activeIssues.filter(issue => 
-      issue.health === 'At Risk' || issue.health === 'Off Track'
-    );
+    // Filter for projects that are currently At Risk or Off Track using real-time data
+    const atRiskProjects = allJiraIssues
+      .filter(jiraIssue => {
+        const status = jiraIssue.fields.status.name;
+        const health = jiraIssue.fields.customfield_10238?.value;
+        
+        // Exclude inactive/archived projects
+        if (['01 Inbox', '03 Committed', '09 Live', 'Won\'t Do'].includes(status)) {
+          return false;
+        }
+        
+        // Only include projects that are At Risk or Off Track
+        return health === 'At Risk' || health === 'Off Track';
+      })
+      .map(jiraIssue => ({
+        key: jiraIssue.key,
+        summary: jiraIssue.fields.summary,
+        assignee: jiraIssue.fields.assignee?.displayName || 'Unassigned',
+        health: jiraIssue.fields.customfield_10238?.value || 'Unknown',
+        status: jiraIssue.fields.status.name
+      }));
     
-    // Calculate weeks at risk for each project
+    // Calculate additional risk data for each project
     const projectsAtRisk = await Promise.all(
       atRiskProjects.map(async (issue) => {
-        const weeksAtRisk = await dataProcessor.calculateWeeksAtRisk(issue.key);
+        const [firstRiskDate, riskHistory] = await Promise.all([
+          dataProcessor.getFirstRiskDate(issue.key),
+          dataProcessor.getRiskHistoryVisualization(issue.key)
+        ]);
         
         return {
           key: issue.key,
@@ -27,8 +48,9 @@ export async function GET(request: NextRequest) {
           assignee: issue.assignee,
           currentHealth: issue.health,
           currentStatus: issue.status,
-          weeksAtRisk: weeksAtRisk,
-          bizChamp: issue.bizChamp || 'Not Assigned',
+          firstRiskDate: firstRiskDate,
+          riskHistory: riskHistory.summary,
+          riskHistoryDetails: riskHistory.history,
           jiraUrl: `https://hometap.atlassian.net/browse/${issue.key}`
         };
       })

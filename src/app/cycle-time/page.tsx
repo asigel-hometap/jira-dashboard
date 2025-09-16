@@ -44,6 +44,7 @@ export default function CycleTimePage() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [excludedIssues, setExcludedIssues] = useState<Set<string>>(new Set());
   const [togglingExclusion, setTogglingExclusion] = useState<string | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   const fetchCycleTimeData = async () => {
     try {
@@ -224,9 +225,20 @@ export default function CycleTimePage() {
         <div className="px-4 py-5 sm:p-6">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-lg font-medium text-gray-900">
-                Discovery Cycle Time Analysis
-              </h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-medium text-gray-900">
+                  Discovery Cycle Time Analysis
+                </h2>
+                <button
+                  onClick={() => setShowHelp(!showHelp)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  title="How cycle times are calculated"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+              </div>
               <p className="text-sm text-gray-500 mt-1">
                 Box-and-whisker analysis of {timeType} discovery cycle times by completion quarter
               </p>
@@ -244,6 +256,63 @@ export default function CycleTimePage() {
               </button>
             </div>
           </div>
+
+          {/* Help Section */}
+          {showHelp && (
+            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-blue-900 mb-3">How Cycle Times Are Calculated</h3>
+              
+              <div className="space-y-4 text-sm text-blue-800">
+                <div>
+                  <h4 className="font-medium mb-2">Discovery Cycle Definition</h4>
+                  <p className="mb-2">
+                    A discovery cycle starts when a project transitions to any discovery status (02 Generative Discovery, 04 Problem Discovery, or 05 Solution Discovery) for the first time and ends when it transitions to a build or resolved status (06 Build, 07 Beta, 08 Live, or 09 Live, Won't Do).
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-2">Calendar vs Active Time</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h5 className="font-medium text-blue-900 mb-1">Calendar Time</h5>
+                      <p className="mb-2">Total elapsed time from discovery start to discovery end, including all days (weekends, holidays, etc.).</p>
+                      <div className="bg-white p-3 rounded border text-xs">
+                        <strong>Example:</strong> Project starts discovery on Monday, ends on Friday of the following week = 12 calendar days
+                      </div>
+                    </div>
+                    <div>
+                      <h5 className="font-medium text-blue-900 mb-1">Active Time</h5>
+                      <p className="mb-2">Time excluding periods when the project was on hold (Health = On Hold) or inactive (03 Committed or back to 01 Inbox).</p>
+                      <div className="bg-white p-3 rounded border text-xs">
+                        <strong>Example:</strong> Same project but excluding 2 days on hold = 10 active days
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-2">Box Plot Statistics</h4>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li><strong>Min/Max:</strong> Shortest and longest cycle times in the quarter</li>
+                    <li><strong>Q1 (25th percentile):</strong> 25% of projects completed faster than this</li>
+                    <li><strong>Median (50th percentile):</strong> Half of projects completed faster than this</li>
+                    <li><strong>Q3 (75th percentile):</strong> 75% of projects completed faster than this</li>
+                    <li><strong>Outliers:</strong> Projects with unusually long cycle times (beyond 1.5 × IQR from Q3)</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-2">Data Quality Notes</h4>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Only completed discovery cycles are included in the analysis</li>
+                    <li>Projects can be excluded from analysis if they represent special cases</li>
+                    <li>Cycle times are calculated based on Jira status transitions</li>
+                    <li>Data is cached for performance and refreshed periodically</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Controls */}
           <div className="mb-6">

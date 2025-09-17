@@ -1433,6 +1433,19 @@ export class DataProcessor {
         
         const cycleInfo = await this.calculateDiscoveryCycleInfo(issue.key);
         
+        // Get inactive periods for caching
+        let inactivePeriods: Array<{start: Date, end: Date}> = [];
+        try {
+          inactivePeriods = await this.getInactivePeriods(
+            issue.key,
+            cycleInfo.discoveryStartDate || undefined,
+            cycleInfo.discoveryEndDate || undefined
+          );
+        } catch (error) {
+          console.warn(`Error getting inactive periods for ${issue.key} during caching:`, error);
+          inactivePeriods = [];
+        }
+        
         // Cache the result
         const completionDate = cycleInfo.discoveryEndDate;
         const quarter = completionDate ? this.getQuarterFromDate(completionDate) : null;
@@ -1443,7 +1456,8 @@ export class DataProcessor {
           endDateLogic: cycleInfo.endDateLogic,
           calendarDaysInDiscovery: cycleInfo.calendarDaysInDiscovery,
           activeDaysInDiscovery: cycleInfo.activeDaysInDiscovery,
-          completionQuarter: quarter
+          completionQuarter: quarter,
+          inactivePeriods: inactivePeriods
         });
         
         // Only include projects with completed discovery cycles

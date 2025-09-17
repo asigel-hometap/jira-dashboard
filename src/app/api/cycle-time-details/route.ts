@@ -25,16 +25,39 @@ export async function GET(request: NextRequest) {
       if (cachedProjects.length > 0) {
         console.log(`Using cached project details for ${quarter}: ${cachedProjects.length} projects`);
         
-        return NextResponse.json({
-          success: true,
-          data: cachedProjects.map(project => ({
+        // Get inactive periods from cycle time cache for each project
+        const projectsWithInactivePeriods = await Promise.all(cachedProjects.map(async (project) => {
+          const cycleCache = await dbService.getCycleTimeCacheByIssue(project.issueKey);
+          let inactivePeriods = [];
+          
+          if (cycleCache && cycleCache.length > 0 && cycleCache[0].inactive_periods) {
+            try {
+              const parsed = JSON.parse(cycleCache[0].inactive_periods);
+              inactivePeriods = parsed.map((p: any) => ({
+                start: p.start,
+                end: p.end
+              }));
+            } catch (error) {
+              console.warn(`Error parsing inactive periods for ${project.issueKey}:`, error);
+            }
+          }
+          
+          return {
             key: project.issueKey,
             summary: project.summary,
             assignee: project.assignee,
             discoveryStart: project.discoveryStartDate,
+            discoveryEnd: cycleCache?.[0]?.discovery_end_date?.split('T')[0] || null,
+            endDateLogic: cycleCache?.[0]?.end_date_logic || 'Still in Discovery',
             activeDiscoveryTime: project.activeDaysInDiscovery,
-            calendarDiscoveryTime: project.calendarDaysInDiscovery
-          }))
+            calendarDiscoveryTime: project.calendarDaysInDiscovery,
+            inactivePeriods: inactivePeriods
+          };
+        }));
+
+        return NextResponse.json({
+          success: true,
+          data: projectsWithInactivePeriods
         });
       }
     } else {

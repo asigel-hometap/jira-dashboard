@@ -157,6 +157,7 @@ export async function createPostgresTables(): Promise<void> {
         calendar_days_in_discovery INTEGER,
         active_days_in_discovery INTEGER,
         completion_quarter VARCHAR(255),
+        inactive_periods JSONB,
         calculated_at VARCHAR(255) NOT NULL
         -- FOREIGN KEY (issue_key) REFERENCES issues(key) -- Removed to allow processing directly from Jira API
       )
@@ -499,14 +500,15 @@ export class PostgresDatabaseService {
     calendarDaysInDiscovery: number | null;
     activeDaysInDiscovery: number | null;
     completionQuarter: string | null;
+    inactivePeriods?: Array<{start: Date, end: Date}>;
   }): Promise<void> {
     const client = await this.pool.connect();
     try {
       await client.query(`
         INSERT INTO cycle_time_cache (
           issue_key, discovery_start_date, discovery_end_date, end_date_logic,
-          calendar_days_in_discovery, active_days_in_discovery, completion_quarter, calculated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          calendar_days_in_discovery, active_days_in_discovery, completion_quarter, inactive_periods, calculated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ON CONFLICT (issue_key) DO UPDATE SET
           discovery_start_date = EXCLUDED.discovery_start_date,
           discovery_end_date = EXCLUDED.discovery_end_date,
@@ -514,6 +516,7 @@ export class PostgresDatabaseService {
           calendar_days_in_discovery = EXCLUDED.calendar_days_in_discovery,
           active_days_in_discovery = EXCLUDED.active_days_in_discovery,
           completion_quarter = EXCLUDED.completion_quarter,
+          inactive_periods = EXCLUDED.inactive_periods,
           calculated_at = EXCLUDED.calculated_at
       `, [
         issueKey, 
@@ -522,7 +525,11 @@ export class PostgresDatabaseService {
         cycleInfo.endDateLogic,
         cycleInfo.calendarDaysInDiscovery, 
         cycleInfo.activeDaysInDiscovery, 
-        cycleInfo.completionQuarter, 
+        cycleInfo.completionQuarter,
+        cycleInfo.inactivePeriods ? JSON.stringify(cycleInfo.inactivePeriods.map(p => ({
+          start: p.start.toISOString(),
+          end: p.end.toISOString()
+        }))) : null,
         new Date().toISOString()
       ]);
     } finally {

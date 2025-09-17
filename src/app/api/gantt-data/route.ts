@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const quarter = searchParams.get('quarter');
     const assignee = searchParams.get('assignee');
+    const includeInactivePeriods = searchParams.get('includeInactivePeriods') === 'true';
 
     if (!quarter) {
       return NextResponse.json(
@@ -41,14 +42,81 @@ export async function GET(request: NextRequest) {
       console.log(`Filtered to ${filteredProjects.length} projects for assignee "${assignee}"`);
     }
 
-    // Get discovery cycle info for each project (simplified for performance)
+    // Get discovery cycle info for each project (use cache first)
     const ganttData = await Promise.all(filteredProjects.map(async (project) => {
       try {
-        // Import data processor to calculate discovery cycle info
+        // Try to get from cache first
+        const cachedData = await dbService.getCycleTimeCacheByIssue(project.key);
+        
+        if (cachedData && cachedData.length > 0) {
+          const cache = cachedData[0];
+          console.log(`Using cached data for ${project.key} (assignee: ${project.assignee})`);
+          
+          // Parse inactive periods from cache
+          let inactivePeriods = [];
+          if (includeInactivePeriods && cache.inactive_periods) {
+            try {
+              const parsed = JSON.parse(cache.inactive_periods);
+              inactivePeriods = parsed.map((p: any) => ({
+                start: new Date(p.start),
+                end: new Date(p.end)
+              }));
+            } catch (error) {
+              console.warn(`Error parsing inactive periods for ${project.key}:`, error);
+              inactivePeriods = [];
+            }
+          }
+          
+          // Handle projects still in discovery
+          const discoveryEnd = cache.discovery_end_date 
+            ? cache.discovery_end_date.split('T')[0]
+            : new Date().toISOString().split('T')[0];
+          
+          return {
+            projectKey: project.key,
+            projectName: project.summary,
+            assignee: project.assignee, // Use the filtered project's assignee
+            discoveryStart: cache.discovery_start_date?.split('T')[0] || new Date().toISOString().split('T')[0],
+            discoveryEnd: discoveryEnd,
+            endDateLogic: cache.end_date_logic || 'Still in Discovery',
+            calendarDays: cache.calendar_days_in_discovery || 0,
+            activeDays: cache.active_days_in_discovery || 0,
+            inactivePeriods: inactivePeriods.map(period => ({
+              start: period.start.toISOString().split('T')[0],
+              end: period.end.toISOString().split('T')[0]
+            })),
+            isStillInDiscovery: !cache.discovery_end_date
+          };
+        }
+        
+        // Fallback to real-time calculation if not cached
+        console.log(`No cache found for ${project.key}, calculating in real-time`);
         const { getDataProcessor } = await import('@/lib/data-processor');
         const dataProcessor = getDataProcessor();
         
         const cycleInfo = await dataProcessor.calculateDiscoveryCycleInfo(project.key);
+        
+        // Get inactive periods for this project (only if requested and with timeout)
+        let inactivePeriods = [];
+        if (includeInactivePeriods) {
+          try {
+            const inactivePeriodsPromise = dataProcessor.getInactivePeriods(
+              project.key, 
+              cycleInfo.discoveryStartDate || undefined, 
+              cycleInfo.discoveryEndDate || undefined
+            );
+            
+            // Add a 5-second timeout for inactive periods to prevent hanging
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout')), 5000)
+            );
+            
+            inactivePeriods = await Promise.race([inactivePeriodsPromise, timeoutPromise]);
+          } catch (error) {
+            console.warn(`Timeout or error getting inactive periods for ${project.key}:`, error.message);
+            inactivePeriods = [];
+          }
+        }
         
         // Handle projects still in discovery
         const discoveryEnd = cycleInfo.discoveryEndDate 
@@ -66,7 +134,10 @@ export async function GET(request: NextRequest) {
           endDateLogic: endDateLogic,
           calendarDays: cycleInfo.calendarDaysInDiscovery || 0,
           activeDays: cycleInfo.activeDaysInDiscovery || 0,
-          inactivePeriods: [], // Skip inactive periods for now to improve performance
+          inactivePeriods: inactivePeriods.map(period => ({
+            start: period.start.toISOString().split('T')[0],
+            end: period.end.toISOString().split('T')[0]
+          })),
           isStillInDiscovery: !cycleInfo.discoveryEndDate
         };
       } catch (error) {

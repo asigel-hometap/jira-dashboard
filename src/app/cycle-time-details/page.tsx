@@ -65,10 +65,12 @@ export default function CycleTimeDetailsPage() {
     }
   };
 
+  // Fetch Gantt data
   const fetchGanttData = async () => {
     try {
       const params = new URLSearchParams();
       params.append('quarter', 'Q3_2025'); // Default to Q3 2025 for now
+      params.append('includeInactivePeriods', 'true'); // Request inactive periods for Gantt chart
       
       if (assigneeFilter) {
         params.append('assignee', assigneeFilter);
@@ -242,6 +244,7 @@ export default function CycleTimeDetailsPage() {
     fetchGanttData();
   }, []);
 
+  // Fetch Gantt data when assignee filter changes
   useEffect(() => {
     console.log('Assignee filter changed to:', assigneeFilter);
     fetchGanttData();

@@ -77,8 +77,22 @@ export default function CycleTimeDetailsPage() {
         console.log('Fetching Gantt data without assignee filter');
       }
       
-      const response = await fetch(`/api/gantt-data?${params.toString()}`);
+      console.log('Making API call to:', `/api/gantt-data?${params.toString()}`);
+      
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      const response = await fetch(`/api/gantt-data?${params.toString()}`, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
       console.log('API response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       
       const result = await response.json();
       console.log('API result:', result);
@@ -92,6 +106,7 @@ export default function CycleTimeDetailsPage() {
       }
     } catch (err) {
       console.error('Error fetching Gantt data:', err);
+      setGanttData([]);
     }
   };
 

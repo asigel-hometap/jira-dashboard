@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       console.log(`Filtered to ${filteredProjects.length} projects for assignee "${assignee}"`);
     }
 
-    // Get discovery cycle info for each project
+    // Get discovery cycle info for each project (simplified for performance)
     const ganttData = await Promise.all(filteredProjects.map(async (project) => {
       try {
         // Import data processor to calculate discovery cycle info
@@ -49,13 +49,6 @@ export async function GET(request: NextRequest) {
         const dataProcessor = getDataProcessor();
         
         const cycleInfo = await dataProcessor.calculateDiscoveryCycleInfo(project.key);
-        
-        // Get inactive periods for this project
-        const inactivePeriods = await dataProcessor.getInactivePeriods(
-          project.key, 
-          cycleInfo.discoveryStartDate || undefined, 
-          cycleInfo.discoveryEndDate || undefined
-        );
         
         // Handle projects still in discovery
         const discoveryEnd = cycleInfo.discoveryEndDate 
@@ -73,10 +66,7 @@ export async function GET(request: NextRequest) {
           endDateLogic: endDateLogic,
           calendarDays: cycleInfo.calendarDaysInDiscovery || 0,
           activeDays: cycleInfo.activeDaysInDiscovery || 0,
-          inactivePeriods: inactivePeriods.map(period => ({
-            start: period.start.toISOString().split('T')[0],
-            end: period.end.toISOString().split('T')[0]
-          })),
+          inactivePeriods: [], // Skip inactive periods for now to improve performance
           isStillInDiscovery: !cycleInfo.discoveryEndDate
         };
       } catch (error) {
@@ -91,6 +81,7 @@ export async function GET(request: NextRequest) {
           endDateLogic: 'Error',
           calendarDays: 0,
           activeDays: 0,
+          inactivePeriods: [],
           isStillInDiscovery: true
         };
       }

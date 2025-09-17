@@ -17,17 +17,21 @@ interface GanttData {
 interface GanttChartProps {
   data: GanttData[];
   height?: number;
+  showInactivePeriods?: boolean;
 }
 
-const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
+const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400, showInactivePeriods = false }) => {
   const [hoveredProject, setHoveredProject] = useState<string | null>(null);
   const [hiddenLegendItems, setHiddenLegendItems] = useState<Set<string>>(new Set());
-  const [showInactivePeriods, setShowInactivePeriods] = useState<boolean>(false);
 
-  // Debug: Log data received by Gantt chart
-  console.log('GanttChart received data:', data?.length || 0, 'projects');
-  if (data && data.length > 0) {
-    console.log('First Gantt project:', data[0]);
+  // Debug: Log data received by Gantt chart (only in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('GanttChart received data:', data?.length || 0, 'projects');
+    console.log('GanttChart showInactivePeriods:', showInactivePeriods);
+    if (data && data.length > 0) {
+      console.log('First Gantt project:', data[0]);
+      console.log('First project inactive periods:', data[0]?.inactivePeriods);
+    }
   }
 
   // Transform data for the chart
@@ -81,6 +85,9 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
         
         // Calculate inactive period segments using real data
         const inactivePeriods = [];
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Processing ${project.projectKey}: showInactivePeriods=${showInactivePeriods}, hasInactivePeriods=${!!project.inactivePeriods}, count=${project.inactivePeriods?.length || 0}`);
+        }
         if (showInactivePeriods && project.inactivePeriods && project.inactivePeriods.length > 0) {
           const totalDuration = endDate.getTime() - startDate.getTime();
           
@@ -109,6 +116,10 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
               leftPercent: clampedLeftPercent,
               widthPercent: Math.min(widthPercent, 100 - clampedLeftPercent)
             });
+            
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`Added inactive period for ${project.projectKey}: ${overlapStart.toISOString().split('T')[0]} to ${overlapEnd.toISOString().split('T')[0]}, left=${clampedLeftPercent.toFixed(1)}%, width=${widthPercent.toFixed(1)}%`);
+            }
           }
         }
         
@@ -217,16 +228,6 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
       <div className="mb-4 p-3 bg-gray-50 rounded-lg">
         <h4 className="text-sm font-medium text-gray-700 mb-2">Legend (click to toggle)</h4>
         <div className="flex flex-wrap gap-4 text-sm">
-          {/* Inactive Periods Toggle */}
-          <div 
-            className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={() => setShowInactivePeriods(!showInactivePeriods)}
-          >
-            <div className={`w-3 h-3 rounded ${showInactivePeriods ? 'bg-gray-500' : 'bg-gray-200 border border-gray-400'}`} />
-            <span className="text-gray-600">
-              Inactive Periods
-            </span>
-          </div>
           {endDateLogicTypes.map((type) => {
             const isHidden = hiddenLegendItems.has(type);
             return (

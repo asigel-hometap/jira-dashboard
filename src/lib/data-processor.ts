@@ -790,7 +790,7 @@ export class DataProcessor {
             if (item.field === 'status' && item.toString) {
               currentStatus = item.toString;
             }
-            if ((item.field === 'Health' || item.fieldId === 'customfield_10238') && item.toString) {
+            if ((item.field === 'Health' || item.field === 'customfield_10238') && item.toString) {
               currentHealth = item.toString;
             }
           }

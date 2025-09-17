@@ -23,6 +23,9 @@ export default function CycleTimeDetailsPage() {
   const [filteredDetails, setFilteredDetails] = useState<DiscoveryCycleDetail[]>([]);
   const [ganttData, setGanttData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chartExpanded, setChartExpanded] = useState(false);
+  const [showInactivePeriods, setShowInactivePeriods] = useState(false);
+  const [ganttLoading, setGanttLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -38,11 +41,13 @@ export default function CycleTimeDetailsPage() {
   // Get unique assignees for dropdown
   const uniqueAssignees = Array.from(new Set(discoveryDetails.map(detail => detail.assignee).filter(Boolean))).sort();
 
-  // Debug: Log ganttData changes
+  // Debug: Log ganttData changes (only in development)
   useEffect(() => {
-    console.log('Gantt data state changed:', ganttData.length, 'projects');
-    if (ganttData.length > 0) {
-      console.log('First project:', ganttData[0].projectKey, ganttData[0].assignee);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Gantt data state changed:', ganttData.length, 'projects');
+      if (ganttData.length > 0) {
+        console.log('First project:', ganttData[0].projectKey, ganttData[0].assignee);
+      }
     }
   }, [ganttData]);
 
@@ -65,34 +70,52 @@ export default function CycleTimeDetailsPage() {
     }
   };
 
-  // Fetch Gantt data
-  const fetchGanttData = async () => {
+  // Fetch Gantt data with specific inactive periods setting
+  const fetchGanttDataWithInactivePeriods = async (includeInactivePeriods: boolean) => {
+    setGanttLoading(true);
     try {
       const params = new URLSearchParams();
       params.append('quarter', 'Q3_2025'); // Default to Q3 2025 for now
-      params.append('includeInactivePeriods', 'true'); // Request inactive periods for Gantt chart
+      params.append('includeInactivePeriods', includeInactivePeriods.toString());
+      console.log('fetchGanttDataWithInactivePeriods called with includeInactivePeriods:', includeInactivePeriods);
       
       if (assigneeFilter) {
         params.append('assignee', assigneeFilter);
-        console.log('Fetching Gantt data with assignee filter:', assigneeFilter);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Fetching Gantt data with assignee filter:', assigneeFilter);
+        }
       } else {
-        console.log('Fetching Gantt data without assignee filter');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Fetching Gantt data without assignee filter');
+        }
       }
       
-      console.log('Making API call to:', `/api/gantt-data?${params.toString()}`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Making API call to:', `/api/gantt-data?${params.toString()}`);
+      }
       
       const response = await fetch(`/api/gantt-data?${params.toString()}`);
-      console.log('API response status:', response.status);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('API response status:', response.status);
+      }
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const result = await response.json();
-      console.log('API result:', result);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('API result:', result);
+      }
       
       if (result.success) {
-        console.log('Gantt data fetched successfully:', result.data.length, 'projects');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Gantt data fetched successfully:', result.data.length, 'projects');
+          console.log('First project inactive periods:', result.data[0]?.inactivePeriods);
+          console.log('Show inactive periods setting:', includeInactivePeriods);
+        }
         setGanttData(result.data);
       } else {
         console.error('Failed to fetch Gantt data:', result.error);
@@ -101,6 +124,67 @@ export default function CycleTimeDetailsPage() {
     } catch (err) {
       console.error('Error fetching Gantt data:', err);
       setGanttData([]);
+    } finally {
+      setGanttLoading(false);
+    }
+  };
+
+  // Fetch Gantt data
+  const fetchGanttData = async () => {
+    setGanttLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.append('quarter', 'Q3_2025'); // Default to Q3 2025 for now
+      params.append('includeInactivePeriods', showInactivePeriods.toString()); // Only request inactive periods if user wants them
+      console.log('fetchGanttData called with showInactivePeriods:', showInactivePeriods);
+      
+      if (assigneeFilter) {
+        params.append('assignee', assigneeFilter);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Fetching Gantt data with assignee filter:', assigneeFilter);
+        }
+      } else {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Fetching Gantt data without assignee filter');
+        }
+      }
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Making API call to:', `/api/gantt-data?${params.toString()}`);
+      }
+      
+      const response = await fetch(`/api/gantt-data?${params.toString()}`);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('API response status:', response.status);
+      }
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('API result:', result);
+      }
+      
+      if (result.success) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Gantt data fetched successfully:', result.data.length, 'projects');
+          console.log('First project inactive periods:', result.data[0]?.inactivePeriods);
+          console.log('Show inactive periods setting:', showInactivePeriods);
+        }
+        setGanttData(result.data);
+      } else {
+        console.error('Failed to fetch Gantt data:', result.error);
+        setGanttData([]);
+      }
+    } catch (err) {
+      console.error('Error fetching Gantt data:', err);
+      setGanttData([]);
+    } finally {
+      setGanttLoading(false);
     }
   };
 
@@ -238,7 +322,9 @@ export default function CycleTimeDetailsPage() {
 
   // Fetch Gantt data when assignee filter changes
   useEffect(() => {
-    console.log('Assignee filter changed to:', assigneeFilter);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Assignee filter changed to:', assigneeFilter);
+    }
     if (assigneeFilter !== undefined) { // Only fetch if filter is actually set
       fetchGanttData();
     }
@@ -378,8 +464,66 @@ export default function CycleTimeDetailsPage() {
           
           {/* Gantt Chart */}
           <div className="mb-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Discovery Cycle Timeline</h3>
-            <GanttChart key={`gantt-${assigneeFilter}-${ganttData.length}`} data={ganttData} height={400} />
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Discovery Cycle Timeline</h3>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={showInactivePeriods}
+                    onChange={(e) => {
+                      console.log('Checkbox changed to:', e.target.checked);
+                      setShowInactivePeriods(e.target.checked);
+                      // Refetch data when toggling inactive periods
+                      // Use the new value directly instead of relying on state update
+                      setTimeout(() => {
+                        console.log('Refetching Gantt data with showInactivePeriods:', e.target.checked);
+                        fetchGanttDataWithInactivePeriods(e.target.checked);
+                      }, 100);
+                    }}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Show inactive periods
+                </label>
+                <button
+                  onClick={() => setChartExpanded(!chartExpanded)}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                >
+                  {chartExpanded ? (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                      Collapse Chart
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                      Expand Chart
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+            <div className="transition-all duration-300 ease-in-out">
+              {ganttLoading ? (
+                <div className="flex items-center justify-center" style={{ height: chartExpanded ? 600 : 300 }}>
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <p className="text-sm text-gray-600">Loading chart data...</p>
+                  </div>
+                </div>
+              ) : (
+                <GanttChart 
+                  key={`gantt-${assigneeFilter}-${ganttData.length}`} 
+                  data={ganttData} 
+                  height={chartExpanded ? 600 : 300}
+                  showInactivePeriods={showInactivePeriods}
+                />
+              )}
+            </div>
           </div>
           
           {filteredDetails.length === 0 ? (

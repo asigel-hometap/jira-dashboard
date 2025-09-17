@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
     const quarter = searchParams.get('quarter');
     const assignee = searchParams.get('assignee');
     const includeInactivePeriods = searchParams.get('includeInactivePeriods') === 'true';
+    
+    console.log(`Gantt API called with quarter=${quarter}, assignee=${assignee}, includeInactivePeriods=${includeInactivePeriods}`);
 
     if (!quarter) {
       return NextResponse.json(
@@ -43,7 +45,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Get discovery cycle info for each project (use cache first)
-    const ganttData = await Promise.all(filteredProjects.map(async (project) => {
+    // Process projects in batches to avoid overwhelming the API
+    const batchSize = 5;
+    const ganttData = [];
+    
+    for (let i = 0; i < filteredProjects.length; i += batchSize) {
+      const batch = filteredProjects.slice(i, i + batchSize);
+      console.log(`Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(filteredProjects.length / batchSize)} (${batch.length} projects)`);
+      
+      const batchResults = await Promise.all(batch.map(async (project) => {
       try {
         // Try to get from cache first
         const cachedData = await dbService.getCycleTimeCacheByIssue(project.key);
@@ -57,14 +67,17 @@ export async function GET(request: NextRequest) {
           if (includeInactivePeriods && cache.inactive_periods) {
             try {
               const parsed = JSON.parse(cache.inactive_periods);
-              inactivePeriods = parsed.map((p: any) => ({
+              inactivePeriods = parsed.map((p: { start: string; end: string }) => ({
                 start: new Date(p.start),
                 end: new Date(p.end)
               }));
+              console.log(`Found ${inactivePeriods.length} cached inactive periods for ${project.key}`);
             } catch (error) {
               console.warn(`Error parsing inactive periods for ${project.key}:`, error);
               inactivePeriods = [];
             }
+          } else if (includeInactivePeriods) {
+            console.log(`No cached inactive periods for ${project.key} (includeInactivePeriods=${includeInactivePeriods}, hasCache=${!!cache.inactive_periods})`);
           }
           
           // Handle projects still in discovery
@@ -81,7 +94,7 @@ export async function GET(request: NextRequest) {
             endDateLogic: cache.end_date_logic || 'Still in Discovery',
             calendarDays: cache.calendar_days_in_discovery || 0,
             activeDays: cache.active_days_in_discovery || 0,
-            inactivePeriods: inactivePeriods.map(period => ({
+            inactivePeriods: inactivePeriods.map((period: { start: Date; end: Date }) => ({
               start: period.start.toISOString().split('T')[0],
               end: period.end.toISOString().split('T')[0]
             })),
@@ -96,7 +109,7 @@ export async function GET(request: NextRequest) {
         
         const cycleInfo = await dataProcessor.calculateDiscoveryCycleInfo(project.key);
         
-        // Get inactive periods for this project (only if requested and with timeout)
+        // Get inactive periods for this project (only if requested and with shorter timeout)
         let inactivePeriods = [];
         if (includeInactivePeriods) {
           try {
@@ -106,14 +119,14 @@ export async function GET(request: NextRequest) {
               cycleInfo.discoveryEndDate || undefined
             );
             
-            // Add a 5-second timeout for inactive periods to prevent hanging
+            // Add a 2-second timeout for inactive periods to prevent hanging
             const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Timeout')), 5000)
+              setTimeout(() => reject(new Error('Timeout')), 2000)
             );
             
-            inactivePeriods = await Promise.race([inactivePeriodsPromise, timeoutPromise]);
+            inactivePeriods = await Promise.race([inactivePeriodsPromise, timeoutPromise]) as any[];
           } catch (error) {
-            console.warn(`Timeout or error getting inactive periods for ${project.key}:`, error.message);
+            console.warn(`Timeout or error getting inactive periods for ${project.key}:`, error instanceof Error ? error.message : String(error));
             inactivePeriods = [];
           }
         }
@@ -134,7 +147,7 @@ export async function GET(request: NextRequest) {
           endDateLogic: endDateLogic,
           calendarDays: cycleInfo.calendarDaysInDiscovery || 0,
           activeDays: cycleInfo.activeDaysInDiscovery || 0,
-          inactivePeriods: inactivePeriods.map(period => ({
+          inactivePeriods: inactivePeriods.map((period: { start: Date; end: Date }) => ({
             start: period.start.toISOString().split('T')[0],
             end: period.end.toISOString().split('T')[0]
           })),
@@ -156,7 +169,10 @@ export async function GET(request: NextRequest) {
           isStillInDiscovery: true
         };
       }
-    }));
+      }));
+      
+      ganttData.push(...batchResults);
+    }
 
     return NextResponse.json({
       success: true,

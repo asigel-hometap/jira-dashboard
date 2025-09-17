@@ -10,6 +10,7 @@ interface GanttData {
   endDateLogic: string;
   calendarDays: number;
   activeDays: number;
+  inactivePeriods?: Array<{start: string, end: string}>;
   isStillInDiscovery?: boolean;
 }
 
@@ -73,13 +74,11 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
         // Calculate inactive period segments
         const inactivePeriods = [];
         if (showInactivePeriods && inactiveDays > 0 && calendarDays > 0) {
-          // For simplicity, we'll distribute inactive days evenly throughout the discovery period
-          // In a more sophisticated implementation, we'd use the actual changelog data
+          // For now, use simplified distribution until we fix the real data issue
           const totalDuration = endDate.getTime() - startDate.getTime();
           const inactiveDuration = (inactiveDays / calendarDays) * totalDuration;
           
           // Create segments representing inactive periods
-          // We'll create 2-3 segments to represent the inactive periods
           const segmentCount = Math.min(3, Math.max(1, Math.ceil(inactiveDays / 7))); // Max 3 segments, at least 1
           const segmentDuration = inactiveDuration / segmentCount;
           
@@ -100,7 +99,6 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
             
             // Check for overlap with previous segments
             const currentLeft = Math.max(0, clampedLeftPercent);
-            const currentRight = currentLeft + Math.min(widthPercent, 100 - currentLeft);
             
             // If this segment would overlap with the previous one, adjust its position
             if (i > 0) {

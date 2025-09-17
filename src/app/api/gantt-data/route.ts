@@ -41,32 +41,48 @@ export async function GET(request: NextRequest) {
       console.log(`Filtered to ${filteredProjects.length} projects for assignee "${assignee}"`);
     }
 
-    // Get discovery cycle info for each project (same as table)
+    // Get discovery cycle info for each project
     const ganttData = await Promise.all(filteredProjects.map(async (project) => {
-      // Import data processor to calculate discovery cycle info
-      const { getDataProcessor } = await import('@/lib/data-processor');
-      const dataProcessor = getDataProcessor();
-      
-      const cycleInfo = await dataProcessor.calculateDiscoveryCycleInfo(project.key);
-      
-      // Handle projects still in discovery
-      const discoveryEnd = cycleInfo.discoveryEndDate 
-        ? cycleInfo.discoveryEndDate.toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0]; // Use current date if still in discovery
-      
-      const endDateLogic = cycleInfo.endDateLogic || 'Still in Discovery';
-      
-      return {
-        projectKey: project.key,
-        projectName: project.summary,
-        assignee: project.assignee,
-        discoveryStart: cycleInfo.discoveryStartDate?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
-        discoveryEnd: discoveryEnd,
-        endDateLogic: endDateLogic,
-        calendarDays: cycleInfo.calendarDaysInDiscovery || 0,
-        activeDays: cycleInfo.activeDaysInDiscovery || 0,
-        isStillInDiscovery: !cycleInfo.discoveryEndDate
-      };
+      try {
+        // Import data processor to calculate discovery cycle info
+        const { getDataProcessor } = await import('@/lib/data-processor');
+        const dataProcessor = getDataProcessor();
+        
+        const cycleInfo = await dataProcessor.calculateDiscoveryCycleInfo(project.key);
+        
+        // Handle projects still in discovery
+        const discoveryEnd = cycleInfo.discoveryEndDate 
+          ? cycleInfo.discoveryEndDate.toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0]; // Use current date if still in discovery
+        
+        const endDateLogic = cycleInfo.endDateLogic || 'Still in Discovery';
+        
+        return {
+          projectKey: project.key,
+          projectName: project.summary,
+          assignee: project.assignee,
+          discoveryStart: cycleInfo.discoveryStartDate?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+          discoveryEnd: discoveryEnd,
+          endDateLogic: endDateLogic,
+          calendarDays: cycleInfo.calendarDaysInDiscovery || 0,
+          activeDays: cycleInfo.activeDaysInDiscovery || 0,
+          isStillInDiscovery: !cycleInfo.discoveryEndDate
+        };
+      } catch (error) {
+        console.error(`Error processing project ${project.key}:`, error);
+        // Return fallback data for this project
+        return {
+          projectKey: project.key,
+          projectName: project.summary,
+          assignee: project.assignee,
+          discoveryStart: new Date().toISOString().split('T')[0],
+          discoveryEnd: new Date().toISOString().split('T')[0],
+          endDateLogic: 'Error',
+          calendarDays: 0,
+          activeDays: 0,
+          isStillInDiscovery: true
+        };
+      }
     }));
 
     return NextResponse.json({

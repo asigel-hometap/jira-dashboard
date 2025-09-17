@@ -39,6 +39,12 @@ export default function CycleTimeDetailsPage() {
   const uniqueAssignees = Array.from(new Set(discoveryDetails.map(detail => detail.assignee).filter(Boolean))).sort();
 
   // Debug: Log ganttData changes
+  useEffect(() => {
+    console.log('Gantt data state changed:', ganttData.length, 'projects');
+    if (ganttData.length > 0) {
+      console.log('First project:', ganttData[0].projectKey, ganttData[0].assignee);
+    }
+  }, [ganttData]);
 
   const fetchDiscoveryDetails = async () => {
     try {
@@ -72,13 +78,17 @@ export default function CycleTimeDetailsPage() {
       }
       
       const response = await fetch(`/api/gantt-data?${params.toString()}`);
+      console.log('API response status:', response.status);
+      
       const result = await response.json();
+      console.log('API result:', result);
       
       if (result.success) {
         console.log('Gantt data fetched successfully:', result.data.length, 'projects');
         setGanttData(result.data);
       } else {
         console.error('Failed to fetch Gantt data:', result.error);
+        setGanttData([]);
       }
     } catch (err) {
       console.error('Error fetching Gantt data:', err);

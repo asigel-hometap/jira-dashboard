@@ -24,9 +24,15 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
   const [hiddenLegendItems, setHiddenLegendItems] = useState<Set<string>>(new Set());
   const [showInactivePeriods, setShowInactivePeriods] = useState<boolean>(false);
 
+  console.log('GanttChart: Component rendered with data:', data?.length, 'projects');
+
   // Transform data for the chart
   const chartData = useMemo(() => {
-    if (!data || data.length === 0) return { projects: [], dateRange: { start: new Date(), end: new Date() } };
+    console.log('GanttChart: Processing data:', data?.length, 'projects');
+    if (!data || data.length === 0) {
+      console.log('GanttChart: No data provided');
+      return { projects: [], dateRange: { start: new Date(), end: new Date() } };
+    }
 
     // Sort by discovery start date
     const sortedData = [...data].sort((a, b) => 
@@ -34,12 +40,15 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
     );
 
     // Calculate date range
-    const allDates = sortedData.flatMap(project => [
-      parseISO(project.discoveryStart),
-      parseISO(project.discoveryEnd)
-    ]);
+    const allDates = sortedData.flatMap(project => {
+      const startDate = parseISO(project.discoveryStart);
+      const endDate = parseISO(project.discoveryEnd);
+      console.log('GanttChart: Parsing dates for', project.projectKey, ':', project.discoveryStart, '->', startDate, project.discoveryEnd, '->', endDate);
+      return [startDate, endDate];
+    });
     const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
     const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
+    console.log('GanttChart: Date range:', minDate, 'to', maxDate);
     
     // Extend range by 10% on each side for better visualization
     const range = maxDate.getTime() - minDate.getTime();
@@ -51,16 +60,22 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
       const endDateLogic = project.endDateLogic;
       const isStillInDiscovery = project.isStillInDiscovery;
       
+      console.log('GanttChart: Filtering project', project.projectKey, 'endDateLogic:', endDateLogic, 'isStillInDiscovery:', isStillInDiscovery, 'hiddenLegendItems:', Array.from(hiddenLegendItems));
+      
       // Check if this project type should be hidden
       if (isStillInDiscovery && hiddenLegendItems.has('Still in Discovery')) {
+        console.log('GanttChart: Hiding project', project.projectKey, 'because Still in Discovery is hidden');
         return false;
       }
       if (!isStillInDiscovery && hiddenLegendItems.has(endDateLogic)) {
+        console.log('GanttChart: Hiding project', project.projectKey, 'because', endDateLogic, 'is hidden');
         return false;
       }
       
       return true;
     });
+    
+    console.log('GanttChart: After filtering:', filteredData.length, 'projects remain');
 
     return {
       projects: filteredData.map((project, index) => {
@@ -119,6 +134,8 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
       dateRange: { start: extendedStart, end: extendedEnd }
     };
   }, [data, hiddenLegendItems, showInactivePeriods]);
+
+  console.log('GanttChart: Final chartData:', chartData.projects.length, 'projects');
 
   // Get unique end date logic types for legend
   const endDateLogicTypes = useMemo(() => {

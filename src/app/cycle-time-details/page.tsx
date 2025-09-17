@@ -362,7 +362,7 @@ export default function CycleTimeDetailsPage() {
           {/* Gantt Chart */}
           <div className="mb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Discovery Cycle Timeline</h3>
-            <GanttChart key={`gantt-${assigneeFilter}-${ganttData.length}`} data={ganttData} height={400} />
+            <GanttChart key={`gantt-${assigneeFilter}`} data={ganttData} height={400} />
           </div>
           
           {filteredDetails.length === 0 ? (

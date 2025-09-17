@@ -39,12 +39,6 @@ export default function CycleTimeDetailsPage() {
   const uniqueAssignees = Array.from(new Set(discoveryDetails.map(detail => detail.assignee).filter(Boolean))).sort();
 
   // Debug: Log ganttData changes
-  useEffect(() => {
-    console.log('Gantt data changed:', ganttData.length, 'projects');
-    if (ganttData.length > 0) {
-      console.log('First project:', ganttData[0].projectKey, ganttData[0].assignee);
-    }
-  }, [ganttData]);
 
   const fetchDiscoveryDetails = async () => {
     try {
@@ -72,16 +66,12 @@ export default function CycleTimeDetailsPage() {
       
       if (assigneeFilter) {
         params.append('assignee', assigneeFilter);
-        console.log('Fetching Gantt data with assignee filter:', assigneeFilter);
-      } else {
-        console.log('Fetching Gantt data without assignee filter');
       }
       
       const response = await fetch(`/api/gantt-data?${params.toString()}`);
       const result = await response.json();
       
       if (result.success) {
-        console.log('Gantt data fetched successfully:', result.data.length, 'projects');
         setGanttData(result.data);
       } else {
         console.error('Failed to fetch Gantt data:', result.error);
@@ -362,7 +352,7 @@ export default function CycleTimeDetailsPage() {
           {/* Gantt Chart */}
           <div className="mb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Discovery Cycle Timeline</h3>
-            <GanttChart key={`gantt-${assigneeFilter}`} data={ganttData} height={400} />
+            <GanttChart data={ganttData} height={400} />
           </div>
           
           {filteredDetails.length === 0 ? (

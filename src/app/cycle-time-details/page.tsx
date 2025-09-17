@@ -66,12 +66,16 @@ export default function CycleTimeDetailsPage() {
       
       if (assigneeFilter) {
         params.append('assignee', assigneeFilter);
+        console.log('Fetching Gantt data with assignee filter:', assigneeFilter);
+      } else {
+        console.log('Fetching Gantt data without assignee filter');
       }
       
       const response = await fetch(`/api/gantt-data?${params.toString()}`);
       const result = await response.json();
       
       if (result.success) {
+        console.log('Gantt data fetched successfully:', result.data.length, 'projects');
         setGanttData(result.data);
       } else {
         console.error('Failed to fetch Gantt data:', result.error);
@@ -214,6 +218,7 @@ export default function CycleTimeDetailsPage() {
   }, []);
 
   useEffect(() => {
+    console.log('Assignee filter changed to:', assigneeFilter);
     fetchGanttData();
   }, [assigneeFilter]);
 
@@ -352,7 +357,7 @@ export default function CycleTimeDetailsPage() {
           {/* Gantt Chart */}
           <div className="mb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Discovery Cycle Timeline</h3>
-            <GanttChart data={ganttData} height={400} />
+            <GanttChart key={`gantt-${assigneeFilter}-${ganttData.length}`} data={ganttData} height={400} />
           </div>
           
           {filteredDetails.length === 0 ? (

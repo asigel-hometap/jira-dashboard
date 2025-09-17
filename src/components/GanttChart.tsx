@@ -26,9 +26,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
 
   // Transform data for the chart
   const chartData = useMemo(() => {
-    console.log('GanttChart useMemo: data length:', data?.length);
     if (!data || data.length === 0) {
-      console.log('GanttChart useMemo: No data, returning empty');
       return { projects: [], dateRange: { start: new Date(), end: new Date() } };
     }
 
@@ -55,22 +53,16 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
       const endDateLogic = project.endDateLogic;
       const isStillInDiscovery = project.isStillInDiscovery;
       
-      console.log(`Filtering project ${project.projectKey}: endDateLogic="${endDateLogic}", isStillInDiscovery=${isStillInDiscovery}, hiddenLegendItems=`, Array.from(hiddenLegendItems));
-      
       // Check if this project type should be hidden
       if (isStillInDiscovery && hiddenLegendItems.has('Still in Discovery')) {
-        console.log(`Hiding project ${project.projectKey} because Still in Discovery is hidden`);
         return false;
       }
       if (!isStillInDiscovery && hiddenLegendItems.has(endDateLogic)) {
-        console.log(`Hiding project ${project.projectKey} because ${endDateLogic} is hidden`);
         return false;
       }
       
       return true;
     });
-    
-    console.log(`After filtering: ${filteredData.length} projects remain out of ${sortedData.length} total`);
 
     return {
       projects: filteredData.map((project, index) => {
@@ -129,8 +121,6 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
       dateRange: { start: extendedStart, end: extendedEnd }
     };
   }, [data, hiddenLegendItems, showInactivePeriods]);
-
-  console.log('GanttChart: Final chartData projects:', chartData.projects.length);
 
   // Get unique end date logic types for legend
   const endDateLogicTypes = useMemo(() => {
@@ -208,7 +198,6 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
   }, [chartData.dateRange]);
 
   if (chartData.projects.length === 0) {
-    console.log('GanttChart: No projects to display. Data length:', data?.length, 'ChartData projects:', chartData.projects.length);
     return (
       <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg">
         <p className="text-gray-500">No discovery cycle data available</p>

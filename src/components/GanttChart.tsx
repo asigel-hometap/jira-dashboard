@@ -26,7 +26,9 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
 
   // Transform data for the chart
   const chartData = useMemo(() => {
+    console.log('GanttChart useMemo: data length:', data?.length);
     if (!data || data.length === 0) {
+      console.log('GanttChart useMemo: No data, returning empty');
       return { projects: [], dateRange: { start: new Date(), end: new Date() } };
     }
 
@@ -53,16 +55,22 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
       const endDateLogic = project.endDateLogic;
       const isStillInDiscovery = project.isStillInDiscovery;
       
+      console.log(`Filtering project ${project.projectKey}: endDateLogic="${endDateLogic}", isStillInDiscovery=${isStillInDiscovery}, hiddenLegendItems=`, Array.from(hiddenLegendItems));
+      
       // Check if this project type should be hidden
       if (isStillInDiscovery && hiddenLegendItems.has('Still in Discovery')) {
+        console.log(`Hiding project ${project.projectKey} because Still in Discovery is hidden`);
         return false;
       }
       if (!isStillInDiscovery && hiddenLegendItems.has(endDateLogic)) {
+        console.log(`Hiding project ${project.projectKey} because ${endDateLogic} is hidden`);
         return false;
       }
       
       return true;
     });
+    
+    console.log(`After filtering: ${filteredData.length} projects remain out of ${sortedData.length} total`);
 
     return {
       projects: filteredData.map((project, index) => {
@@ -122,6 +130,8 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
     };
   }, [data, hiddenLegendItems, showInactivePeriods]);
 
+  console.log('GanttChart: Final chartData projects:', chartData.projects.length);
+
   // Get unique end date logic types for legend
   const endDateLogicTypes = useMemo(() => {
     const types = new Set(data.map(d => d.endDateLogic));
@@ -152,7 +162,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
       'Beta': '#3B82F6', // Blue
       'Live': '#8B5CF6', // Purple
       'Won\'t Do': '#EF4444', // Red
-      'Still in Discovery': '#F59E0B', // Amber
+      'Still in Discovery': '#366CED', // Blue
       'No Discovery': '#6B7280', // Gray
       'Direct to Build': '#EC4899', // Pink
     };
@@ -198,6 +208,7 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
   }, [chartData.dateRange]);
 
   if (chartData.projects.length === 0) {
+    console.log('GanttChart: No projects to display. Data length:', data?.length, 'ChartData projects:', chartData.projects.length);
     return (
       <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg">
         <p className="text-gray-500">No discovery cycle data available</p>
@@ -350,20 +361,15 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
 
                   {/* Hover Tooltip */}
                   {hoveredProject === project.projectKey && (
-                    <div className="absolute z-10 bg-white p-3 border border-gray-200 rounded-lg shadow-lg text-sm">
-                      <div className="font-semibold text-gray-900">{project.projectName}</div>
-                      <div className="text-gray-600">
-                        <div><strong>Key:</strong> {project.projectKey}</div>
+                    <div className="absolute z-10 bg-white p-3 border border-gray-200 rounded-lg shadow-lg text-sm min-w-64">
+                      <div className="font-semibold text-gray-900 mb-2">{project.projectName}</div>
+                      <div className="text-gray-600 space-y-1">
+                        <div><strong>Key:</strong> <a href={`https://hometap.atlassian.net/browse/${project.projectKey}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">{project.projectKey}</a></div>
                         <div><strong>Assignee:</strong> {project.assignee}</div>
-                        <div><strong>Start:</strong> {format(project.startDate, 'MMM dd, yyyy')}</div>
-                        <div><strong>End:</strong> {format(project.endDate, 'MMM dd, yyyy')}</div>
-                        <div><strong>Duration:</strong> {project.duration} days</div>
+                        <div><strong>Discovery Start:</strong> {format(project.startDate, 'MMM dd, yyyy')}</div>
+                        <div><strong>Discovery End:</strong> {format(project.endDate, 'MMM dd, yyyy')} - {project.endDateLogic}</div>
                         <div><strong>Calendar Days:</strong> {project.calendarDays}</div>
                         <div><strong>Active Days:</strong> {project.activeDays}</div>
-                        {project.inactiveDays > 0 && (
-                          <div><strong>Inactive Days:</strong> {project.inactiveDays}</div>
-                        )}
-                        <div><strong>End Logic:</strong> {project.endDateLogic}</div>
                       </div>
                     </div>
                   )}

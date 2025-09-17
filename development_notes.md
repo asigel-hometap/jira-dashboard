@@ -822,5 +822,63 @@ From server logs and debug endpoints, the exact HT-156 timeline is:
 - **Complex Transitions**: Projects can go inactive then active again during discovery
 - **Algorithm Robustness**: Need better handling of complex status transition patterns
 
+## Gantt Chart Implementation & Debugging (Current Session - 2025-09-15)
+
+### 🎯 **Goal: Discovery Cycle Timeline Visualization**
+- **Feature**: Gantt chart showing discovery cycles as horizontal bars on timeline
+- **Location**: Cycle Time Details page (`/cycle-time-details`)
+- **Data Source**: Same as project table (57 current active projects)
+- **Visualization**: Horizontal bars with start/end dates, end logic markers, inactive periods
+
+### ✅ **Implementation Completed**
+- **GanttChart Component**: Created `src/components/GanttChart.tsx` with HTML/CSS rendering
+- **API Endpoint**: Created `/api/gantt-data` to fetch project data for chart
+- **Data Processing**: Calculates discovery start/end dates, end logic, inactive periods
+- **Interactive Features**: 
+  - Clickable legend to toggle project types on/off
+  - Hover tooltips with project details
+  - Inactive periods visualization (gray segments)
+  - Still-in-discovery projects (gradient bars with yellow markers)
+
+### 🔧 **Technical Implementation Details**
+- **Date Range Calculation**: Smart intervals (weekly/bi-weekly/monthly) based on total span
+- **Bar Positioning**: Percentage-based positioning relative to timeline
+- **End Logic Markers**: Color-coded circles at end of bars (Build Transition=green, etc.)
+- **Inactive Periods**: Real changelog data showing actual "On Hold" periods
+- **Responsive Design**: Horizontal scrolling with proper date label spacing
+
+### 🐛 **Current Issue: Empty Chart Display**
+- **Symptom**: Gantt chart shows "No discovery cycle data available" despite 57 projects in table
+- **Data Flow**: API returns 57 projects → Component receives 57 projects → Processing completes → Chart shows empty
+- **Debugging Added**: Console logs show data is being processed correctly (57 projects)
+- **Suspected Cause**: React rendering issue or useMemo dependency problem
+
+### 🔍 **Debugging Status**
+- **Data Fetching**: ✅ Working (API returns 57 projects)
+- **Data Passing**: ✅ Working (Component receives 57 projects)  
+- **Data Processing**: ✅ Working (useMemo processes all 57 projects)
+- **Chart Rendering**: ❌ **ISSUE** - Chart shows empty despite 57 processed projects
+
+### 🧪 **Debugging Attempts Made**
+1. **Added Console Logs**: Track data flow from API → Component → useMemo → Render
+2. **Removed React Key**: Eliminated unnecessary component remounting
+3. **Cleaned Up Dependencies**: Simplified useMemo dependencies
+4. **Verified Data Structure**: Confirmed API returns correct project data format
+
+### 🎯 **Next Steps to Resolve**
+1. **Check Console Output**: Review browser console for debugging logs
+2. **Identify Root Cause**: Determine why chartData.projects.length === 0 despite processing
+3. **Fix Rendering Logic**: Address the specific issue preventing chart display
+4. **Test Assignee Filtering**: Ensure dropdown filtering works with chart
+5. **Verify Inactive Periods**: Test gray segment visualization
+
+### 📊 **Expected Final Result**
+- **Timeline**: October 2024 to September 2025 (11+ months)
+- **Projects**: 57 horizontal bars showing discovery cycles
+- **Interactive**: Clickable legend, hover tooltips, assignee filtering
+- **Visual**: Color-coded end markers, gray inactive segments, gradient bars for ongoing projects
+
+### 🔄 **Status**: Blocked on rendering issue - needs debugging to identify why processed data isn't displaying
+
 ---
-*Last updated: September 2025*
+*Last updated: September 15, 2025*

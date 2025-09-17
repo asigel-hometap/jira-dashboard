@@ -31,12 +31,12 @@ export async function GET(request: NextRequest) {
     );
     console.log(`Filtered to ${discoveryProjects.length} discovery projects`);
 
-    // Apply assignee filter if provided (case-insensitive partial match)
+    // Apply assignee filter if provided (exact match)
     let filteredProjects = discoveryProjects;
     if (assignee) {
       console.log(`Filtering by assignee: "${assignee}"`);
       filteredProjects = discoveryProjects.filter(project => 
-        project.assignee && project.assignee.toLowerCase().includes(assignee.toLowerCase())
+        project.assignee && project.assignee === assignee
       );
       console.log(`Filtered to ${filteredProjects.length} projects for assignee "${assignee}"`);
     }
@@ -49,6 +49,13 @@ export async function GET(request: NextRequest) {
         const dataProcessor = getDataProcessor();
         
         const cycleInfo = await dataProcessor.calculateDiscoveryCycleInfo(project.key);
+        
+        // Get inactive periods for this project
+        const inactivePeriods = await dataProcessor.getInactivePeriods(
+          project.key, 
+          cycleInfo.discoveryStartDate || undefined, 
+          cycleInfo.discoveryEndDate || undefined
+        );
         
         // Handle projects still in discovery
         const discoveryEnd = cycleInfo.discoveryEndDate 
@@ -66,6 +73,10 @@ export async function GET(request: NextRequest) {
           endDateLogic: endDateLogic,
           calendarDays: cycleInfo.calendarDaysInDiscovery || 0,
           activeDays: cycleInfo.activeDaysInDiscovery || 0,
+          inactivePeriods: inactivePeriods.map(period => ({
+            start: period.start.toISOString().split('T')[0],
+            end: period.end.toISOString().split('T')[0]
+          })),
           isStillInDiscovery: !cycleInfo.discoveryEndDate
         };
       } catch (error) {

@@ -71,59 +71,35 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400 }) => {
         const activeDays = project.activeDays;
         const inactiveDays = calendarDays - activeDays;
         
-        // Calculate inactive period segments
+        // Calculate inactive period segments using real data
         const inactivePeriods = [];
-        if (showInactivePeriods && inactiveDays > 0 && calendarDays > 0) {
-          // For now, use simplified distribution until we fix the real data issue
+        if (showInactivePeriods && project.inactivePeriods && project.inactivePeriods.length > 0) {
           const totalDuration = endDate.getTime() - startDate.getTime();
-          const inactiveDuration = (inactiveDays / calendarDays) * totalDuration;
           
-          // Create segments representing inactive periods
-          const segmentCount = Math.min(3, Math.max(1, Math.ceil(inactiveDays / 7))); // Max 3 segments, at least 1
-          const segmentDuration = inactiveDuration / segmentCount;
-          
-          // Ensure segments don't overlap by creating proper gaps
-          const availableSpace = totalDuration - inactiveDuration;
-          const gapSize = availableSpace / (segmentCount + 1);
-          
-          for (let i = 0; i < segmentCount; i++) {
-            const segmentStart = startDate.getTime() + (i + 1) * gapSize + i * segmentDuration;
-            const segmentEnd = segmentStart + segmentDuration;
+          for (const period of project.inactivePeriods) {
+            const periodStart = new Date(period.start);
+            const periodEnd = new Date(period.end);
             
-            const leftPercent = ((segmentStart - startDate.getTime()) / totalDuration) * 100;
-            const widthPercent = (segmentDuration / totalDuration) * 100;
+            // Only include periods that overlap with the project timeline
+            if (periodEnd <= startDate || periodStart >= endDate) continue;
             
-            // Ensure segments stay within bar boundaries and don't overlap
+            // Calculate the overlap with the project timeline
+            const overlapStart = new Date(Math.max(periodStart.getTime(), startDate.getTime()));
+            const overlapEnd = new Date(Math.min(periodEnd.getTime(), endDate.getTime()));
+            
+            // Calculate percentages relative to the project bar
+            const leftPercent = Math.max(0, ((overlapStart.getTime() - startDate.getTime()) / totalDuration) * 100);
+            const widthPercent = Math.min(100 - leftPercent, ((overlapEnd.getTime() - overlapStart.getTime()) / totalDuration) * 100);
+            
+            // Ensure segments stay within bar boundaries
             const maxLeftPercent = 100 - widthPercent;
             const clampedLeftPercent = Math.min(leftPercent, maxLeftPercent);
             
-            // Check for overlap with previous segments
-            const currentLeft = Math.max(0, clampedLeftPercent);
-            
-            // If this segment would overlap with the previous one, adjust its position
-            if (i > 0) {
-              const prevSegment = inactivePeriods[i - 1];
-              const prevRight = prevSegment.leftPercent + prevSegment.widthPercent;
-              if (currentLeft < prevRight) {
-                // Move this segment to start after the previous one ends
-                const adjustedLeft = Math.min(prevRight + 1, maxLeftPercent); // 1% gap
-                const adjustedWidth = Math.min(widthPercent, 100 - adjustedLeft);
-                
-                inactivePeriods.push({
-                  start: new Date(segmentStart),
-                  end: new Date(segmentEnd),
-                  leftPercent: adjustedLeft,
-                  widthPercent: adjustedWidth
-                });
-                continue;
-              }
-            }
-            
             inactivePeriods.push({
-              start: new Date(segmentStart),
-              end: new Date(segmentEnd),
-              leftPercent: currentLeft,
-              widthPercent: Math.min(widthPercent, 100 - currentLeft)
+              start: overlapStart,
+              end: overlapEnd,
+              leftPercent: clampedLeftPercent,
+              widthPercent: Math.min(widthPercent, 100 - clampedLeftPercent)
             });
           }
         }

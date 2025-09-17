@@ -35,6 +35,17 @@ export default function CycleTimeDetailsPage() {
     end: string;
   }>({ start: '', end: '' });
 
+  // Get unique assignees for dropdown
+  const uniqueAssignees = Array.from(new Set(discoveryDetails.map(detail => detail.assignee).filter(Boolean))).sort();
+
+  // Debug: Log ganttData changes
+  useEffect(() => {
+    console.log('Gantt data changed:', ganttData.length, 'projects');
+    if (ganttData.length > 0) {
+      console.log('First project:', ganttData[0].projectKey, ganttData[0].assignee);
+    }
+  }, [ganttData]);
+
   const fetchDiscoveryDetails = async () => {
     try {
       setLoading(true);
@@ -61,13 +72,19 @@ export default function CycleTimeDetailsPage() {
       
       if (assigneeFilter) {
         params.append('assignee', assigneeFilter);
+        console.log('Fetching Gantt data with assignee filter:', assigneeFilter);
+      } else {
+        console.log('Fetching Gantt data without assignee filter');
       }
       
       const response = await fetch(`/api/gantt-data?${params.toString()}`);
       const result = await response.json();
       
       if (result.success) {
+        console.log('Gantt data fetched successfully:', result.data.length, 'projects');
         setGanttData(result.data);
+      } else {
+        console.error('Failed to fetch Gantt data:', result.error);
       }
     } catch (err) {
       console.error('Error fetching Gantt data:', err);
@@ -166,7 +183,7 @@ export default function CycleTimeDetailsPage() {
     // Filter by assignee
     if (assigneeFilter) {
       filtered = filtered.filter(project => 
-        project.assignee.toLowerCase().includes(assigneeFilter.toLowerCase())
+        project.assignee === assigneeFilter
       );
     }
 
@@ -271,14 +288,19 @@ export default function CycleTimeDetailsPage() {
                 <label htmlFor="assignee-filter" className="block text-sm font-medium text-gray-700 mb-1">
                   Filter by Assignee
                 </label>
-                <input
+                <select
                   id="assignee-filter"
-                  type="text"
-                  placeholder="Search assignee..."
                   value={assigneeFilter}
                   onChange={(e) => setAssigneeFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">All Assignees</option>
+                  {uniqueAssignees.map(assignee => (
+                    <option key={assignee} value={assignee}>
+                      {assignee}
+                    </option>
+                  ))}
+                </select>
               </div>
               
               {/* Status Filter */}
@@ -340,7 +362,7 @@ export default function CycleTimeDetailsPage() {
           {/* Gantt Chart */}
           <div className="mb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Discovery Cycle Timeline</h3>
-            <GanttChart data={ganttData} height={400} />
+            <GanttChart key={`gantt-${assigneeFilter}-${ganttData.length}`} data={ganttData} height={400} />
           </div>
           
           {filteredDetails.length === 0 ? (

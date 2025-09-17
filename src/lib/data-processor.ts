@@ -731,6 +731,117 @@ export class DataProcessor {
     }
   }
 
+  /**
+   * Get inactive periods for a project during discovery based on changelog data
+   */
+  async getInactivePeriods(issueKey: string, discoveryStartDate?: Date, discoveryEndDate?: Date): Promise<Array<{start: Date, end: Date}>> {
+    try {
+      const changelog = await getIssueChangelog(issueKey);
+      if (!changelog || !changelog.histories) {
+        return [];
+      }
+
+      // Sort by date (oldest first)
+      const sortedHistories = changelog.histories.sort((a, b) => 
+        new Date(a.created).getTime() - new Date(b.created).getTime()
+      );
+
+      const inactivePeriods: Array<{start: Date, end: Date}> = [];
+      let currentStatus = '';
+      let currentHealth = '';
+      let isCurrentlyActive = true;
+      let inactiveStart: Date | null = null;
+
+      // Find the first discovery transition to set initial status
+      for (const history of sortedHistories) {
+        if (history.items) {
+          for (const item of history.items) {
+            if (item.field === 'status' && item.toString && 
+                (item.toString.includes('02 Generative Discovery') ||
+                 item.toString.includes('04 Problem Discovery') ||
+                 item.toString.includes('05 Solution Discovery'))) {
+              currentStatus = item.toString;
+              break;
+            }
+          }
+          if (currentStatus) break;
+        }
+      }
+
+      // If project starts in active discovery status, it's active from the start
+      const activeDiscoveryStatuses = ['02 Generative Discovery', '04 Problem Discovery', '05 Solution Discovery'];
+      if (currentStatus && activeDiscoveryStatuses.includes(currentStatus)) {
+        isCurrentlyActive = true;
+      } else {
+        isCurrentlyActive = false;
+      }
+
+      // Process each transition during discovery period
+      for (const history of sortedHistories) {
+        const transitionDate = new Date(history.created);
+        
+        // Only process transitions within discovery period
+        if (discoveryStartDate && transitionDate < discoveryStartDate) continue;
+        if (discoveryEndDate && transitionDate > discoveryEndDate) continue;
+        
+        // Process status and health changes
+        if (history.items) {
+          for (const item of history.items) {
+            if (item.field === 'status' && item.toString) {
+              currentStatus = item.toString;
+            }
+            if ((item.field === 'Health' || item.fieldId === 'customfield_10238') && item.toString) {
+              currentHealth = item.toString;
+            }
+          }
+        }
+        
+        // Determine new active state
+        const inactiveStatuses = ['01 Inbox', '03 Committed', '09 Live', 'Won\'t Do'];
+        const isInactiveStatus = inactiveStatuses.includes(currentStatus);
+        const isActiveDiscoveryStatus = activeDiscoveryStatuses.includes(currentStatus);
+        const isOnHoldHealth = currentHealth === 'On Hold';
+        const wasActive = isCurrentlyActive;
+        // Project is inactive if: 1) status is inactive, OR 2) health is On Hold (regardless of status)
+        const isNowInactive = isInactiveStatus || isOnHoldHealth;
+        
+        // Handle state changes
+        if (wasActive && isNowInactive) {
+          // Project became inactive - start tracking inactive period
+          inactiveStart = transitionDate;
+          isCurrentlyActive = false;
+        } else if (!wasActive && !isNowInactive) {
+          // Project became active - end inactive period
+          if (inactiveStart) {
+            // Only add inactive period if it's at least 1 day long
+            const inactiveDuration = transitionDate.getTime() - inactiveStart.getTime();
+            if (inactiveDuration >= 24 * 60 * 60 * 1000) { // At least 1 day
+              inactivePeriods.push({
+                start: inactiveStart,
+                end: transitionDate
+              });
+            }
+            inactiveStart = null;
+          }
+          isCurrentlyActive = true;
+        }
+      }
+
+      // If project ended while inactive, close the last inactive period
+      if (inactiveStart && discoveryEndDate) {
+        inactivePeriods.push({
+          start: inactiveStart,
+          end: discoveryEndDate
+        });
+      }
+
+      return inactivePeriods;
+    } catch (error) {
+      console.error(`Error getting inactive periods for ${issueKey}:`, error);
+      return [];
+    }
+  }
+
   async calculateDiscoveryCycleInfo(issueKey: string): Promise<{
     discoveryStartDate: Date | null;
     discoveryEndDate: Date | null;

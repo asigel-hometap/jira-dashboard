@@ -1,149 +1,27 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { WorkloadData } from '@/types/jira';
-import Sparkline from '@/components/Sparkline';
-import HealthBadges from '@/components/HealthBadges';
-
-interface DataContext {
-  lastUpdated: Date;
-  dataSource: string;
-}
-
-
+import React from 'react';
+import { useWorkloadData } from '@/hooks/useWorkloadData';
+import { useTrendsData } from '@/hooks/useTrendsData';
+import WorkloadCard from '@/components/WorkloadCard';
 
 export default function Home() {
-  const [workloadData, setWorkloadData] = useState<WorkloadData[]>([]);
-  const [trendsData, setTrendsData] = useState<Record<string, number[]> | null>(null);
-  const [dataContext, setDataContext] = useState<DataContext | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { workloadData, loading: workloadLoading, error: workloadError, refetch: refetchWorkload } = useWorkloadData();
+  const { 
+    dataContext, 
+    loading: trendsLoading, 
+    error: trendsError, 
+    globalMaxProjects, 
+    trendDataMap,
+    refetch: refetchTrends
+  } = useTrendsData();
 
-  const fetchWorkloadData = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/workload`);
-      const result = await response.json();
-      
-      if (result.success) {
-        setWorkloadData(result.data);
-      } else {
-        setError(result.error || 'Failed to fetch workload data');
-      }
-    } catch (err) {
-      setError('Network error fetching data');
-    } finally {
-      setLoading(false);
-    }
+  const loading = workloadLoading || trendsLoading;
+  const error = workloadError || trendsError;
+
+  const handleRefresh = async () => {
+    await Promise.all([refetchWorkload(), refetchTrends()]);
   };
-
-
-  const fetchDataContext = async () => {
-    try {
-      const response = await fetch(`/api/data-context`);
-      const result = await response.json();
-      
-      if (result.success) {
-        setDataContext(result.data);
-      }
-    } catch (err) {
-      console.error('Error fetching data context:', err);
-    }
-  };
-
-
-  const fetchTrendsData = async () => {
-    try {
-      console.log('Fetching extended trends data...');
-      const response = await fetch(`/api/extended-trends`);
-      const result = await response.json();
-      
-      console.log('Extended trends data result:', result);
-      if (result.success) {
-        setTrendsData(result.data);
-        console.log(`Loaded extended trends: ${result.data.historicalDataPoints} historical + ${result.data.realTimeDataPoints} real-time data points`);
-      }
-    } catch (err) {
-      console.error('Error fetching extended trends data:', err);
-    }
-  };
-
-
-  useEffect(() => {
-    fetchWorkloadData();
-    fetchTrendsData();
-    fetchDataContext();
-  }, []);
-
-  // Create a stable list of team member names to avoid dependency on workloadData array
-  const teamMemberNames = useMemo(() => {
-    return workloadData.map(member => member.teamMember);
-  }, [workloadData]);
-
-  // Calculate the global maximum project count across all team members for Y-axis normalization
-  const globalMaxProjects = useMemo(() => {
-    if (!trendsData) {
-      return 0;
-    }
-
-    let max = 0;
-    const teamMemberKeys = ['adam', 'jennie', 'jacqueline', 'robert', 'garima', 'lizzy', 'sanela'];
-    
-    teamMemberKeys.forEach(key => {
-      const data = trendsData[key as keyof typeof trendsData];
-      if (Array.isArray(data) && data.length > 0) {
-        const memberMax = Math.max(...data);
-        if (memberMax > max) {
-          max = memberMax;
-        }
-      }
-    });
-    
-    // Add a small buffer to the max for better visual spacing
-    return max > 0 ? max + 1 : 1; // Ensure min 1 if all are 0
-  }, [trendsData]);
-
-  // Memoized trend data calculation to prevent infinite re-renders
-  const trendDataMap = useMemo(() => {
-    if (!trendsData) {
-      return new Map();
-    }
-    
-    const nameMap: { [key: string]: string } = {
-      'Adam Sigel': 'adam',
-      'Jennie Goldenberg': 'jennie',
-      'Jacqueline Gallagher': 'jacqueline',
-      'Robert J. Johnson': 'robert',
-      'Garima Giri': 'garima',
-      'Lizzy Magill': 'lizzy',
-      'Sanela Smaka': 'sanela'
-    };
-    
-    const map = new Map();
-    
-    teamMemberNames.forEach((teamMember) => {
-      const key = nameMap[teamMember];
-      if (!key) {
-        map.set(teamMember, { data: [], dates: [] });
-        return;
-      }
-      
-      const data = trendsData[key as keyof typeof trendsData];
-      const dates = trendsData.dates || [];
-      
-      if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'number') {
-        let filteredData = data as number[];
-        let filteredDates = dates as unknown as string[];
-        
-        
-        map.set(teamMember, { data: filteredData, dates: filteredDates });
-      } else {
-        map.set(teamMember, { data: [], dates: [] });
-      }
-    });
-    
-    return map;
-  }, [trendsData, teamMemberNames]);
 
   if (loading) {
     return (
@@ -192,7 +70,7 @@ export default function Home() {
                     </div>
             <div className="flex space-x-2">
               <button
-                onClick={fetchWorkloadData}
+                onClick={handleRefresh}
                 disabled={loading}
                 className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
               >
@@ -218,84 +96,12 @@ export default function Home() {
           
           <div className="grid grid-cols-1 gap-6">
             {workloadData.map((member) => (
-              <div
+              <WorkloadCard
                 key={member.teamMember}
-                className={`relative bg-white p-6 rounded-lg border-2 ${
-                  member.isOverloaded 
-                    ? 'border-red-200 bg-red-50' 
-                    : 'border-gray-200'
-                }`}
-              >
-                <div className="flex gap-6">
-                  {/* Left side: Team member info and project health */}
-                  <div className="flex-1 space-y-4">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                          <span className="text-sm font-medium text-gray-700">
-                            {member.teamMember.split(' ').map(n => n[0]).join('')}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="ml-4 flex-1">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-medium text-gray-900">
-                            {member.teamMember}
-                          </h3>
-                          {member.isOverloaded && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                              Overloaded
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-2xl font-semibold text-gray-900">
-                          {member.activeProjectCount}
-                        </p>
-                        <p className="text-sm text-gray-500">active projects</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-xs text-gray-500 mb-2">Project Health</div>
-                      <HealthBadges healthBreakdown={member.healthBreakdown} />
-                    </div>
-                  </div>
-
-                          {/* Right side: Workload Trend Sparkline */}
-                          <div className="flex-1 max-w-2xl">
-                            <div className="flex items-center justify-between mb-2 pr-2">
-                              <div className="text-xs text-gray-500">Workload Trend</div>
-                              {trendsData && 'historicalDataPoints' in trendsData && (
-                                <div className="flex items-center space-x-2 text-xs">
-                                  {(trendsData as any).historicalDataPoints > 0 && (
-                                    <div className="flex items-center">
-                                      <div className="w-2 h-2 bg-blue-400 rounded-full mr-1"></div>
-                                      <span className="text-gray-600">{(trendsData as any).historicalDataPoints} historical</span>
-                                    </div>
-                                  )}
-                                  {(trendsData as any).realTimeDataPoints > 0 && (
-                                    <div className="flex items-center">
-                                      <div className="w-2 h-2 bg-green-400 rounded-full mr-1"></div>
-                                      <span className="text-gray-600">{(trendsData as any).realTimeDataPoints} real-time</span>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                            <div className="bg-gray-50 rounded-lg p-3">
-                              <Sparkline
-                                data={trendDataMap.get(member.teamMember)?.data || []}
-                                dates={trendDataMap.get(member.teamMember)?.dates || []}
-                                height={120}
-                                color={member.isOverloaded ? '#EF4444' : '#3B82F6'}
-                                strokeWidth={2}
-                                showTooltip={true}
-                                globalMaxProjects={globalMaxProjects}
-                              />
-                            </div>
-                          </div>
-                </div>
-              </div>
+                member={member}
+                trendData={trendDataMap.get(member.teamMember) || { data: [], dates: [] }}
+                globalMaxProjects={globalMaxProjects}
+              />
             ))}
           </div>
         </div>

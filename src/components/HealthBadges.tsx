@@ -1,3 +1,5 @@
+import React from 'react';
+
 interface HealthBadgesProps {
   healthBreakdown: {
     onTrack: number;
@@ -18,9 +20,9 @@ const healthConfig = {
   mystery: { label: 'Mystery', color: 'bg-purple-100 text-purple-800 border-purple-200' },
   complete: { label: 'Complete', color: 'bg-gray-100 text-gray-800 border-gray-200' },
   unknown: { label: 'Unknown', color: 'bg-gray-100 text-gray-600 border-gray-300' }
-};
+} as const;
 
-export default function HealthBadges({ healthBreakdown }: HealthBadgesProps) {
+const HealthBadges = React.memo(({ healthBreakdown }: HealthBadgesProps) => {
   const badges = Object.entries(healthBreakdown)
     .filter(([_, count]) => count > 0)
     .map(([key, count]) => {
@@ -48,4 +50,8 @@ export default function HealthBadges({ healthBreakdown }: HealthBadgesProps) {
       {badges}
     </div>
   );
-}
+});
+
+HealthBadges.displayName = 'HealthBadges';
+
+export default HealthBadges;

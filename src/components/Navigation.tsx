@@ -1,18 +1,19 @@
 'use client';
 
+import React from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
-const Navigation = () => {
-  const pathname = usePathname();
+const navItems = [
+  { href: '/', label: 'Team Workload' },
+  { href: '/projects-at-risk', label: 'Projects At Risk' },
+  { href: '/trends', label: 'Trends Over Time' },
+  { href: '/cycle-time', label: 'Cycle Time Analysis' },
+  { href: '/cycle-time-details', label: 'Cycle Time Details' },
+] as const;
 
-  const navItems = [
-    { href: '/', label: 'Team Workload' },
-    { href: '/projects-at-risk', label: 'Projects At Risk' },
-    { href: '/trends', label: 'Trends Over Time' },
-    { href: '/cycle-time', label: 'Cycle Time Analysis' },
-    { href: '/cycle-time-details', label: 'Cycle Time Details' },
-  ];
+const Navigation = React.memo(() => {
+  const pathname = usePathname();
 
   return (
     <nav className="bg-white shadow-sm">
@@ -38,6 +39,8 @@ const Navigation = () => {
       </div>
     </nav>
   );
-};
+});
+
+Navigation.displayName = 'Navigation';
 
 export default Navigation;

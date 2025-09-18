@@ -15,7 +15,7 @@ async function testDatabasePerformance() {
   try {
     // Test 1: Check current performance
     console.log('📊 Checking current database performance...');
-    const checkResponse = await fetch('http://localhost:3000/api/optimize-database');
+    const checkResponse = await fetch('http://localhost:3001/api/optimize-database');
     const checkData = await checkResponse.json();
     
     if (checkData.success) {
@@ -39,7 +39,7 @@ async function testDatabasePerformance() {
     
     // Test 2: Apply priority indexes
     console.log('\n🔧 Applying priority database indexes...');
-    const optimizeResponse = await fetch('http://localhost:3000/api/optimize-database?mode=priority', {
+    const optimizeResponse = await fetch('http://localhost:3001/api/optimize-database?mode=priority', {
       method: 'POST'
     });
     const optimizeData = await optimizeResponse.json();
@@ -73,7 +73,7 @@ async function testDatabasePerformance() {
     for (const api of apis) {
       const start = performance.now();
       try {
-        const response = await fetch(`http://localhost:3000${api.url}`);
+        const response = await fetch(`http://localhost:3001${api.url}`);
         const end = performance.now();
         const duration = Math.round(end - start);
         

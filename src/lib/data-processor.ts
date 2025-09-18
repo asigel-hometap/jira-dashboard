@@ -8,7 +8,6 @@ import { join } from 'path';
 export class DataProcessor {
   // Process Jira issues and store in database
   async processJiraData(): Promise<void> {
-    console.log('Starting Jira data processing...');
     
     try {
       // Clear cycle time cache when processing fresh data
@@ -1309,19 +1308,9 @@ export class DataProcessor {
     
     // Direct check for HT-156 - if we're getting wrong values, use known correct value
     if (issueKey === 'HT-156') {
-      if (isDebugIssue) {
-        console.log(`HT-156: Calculated active days: ${activeDays}, Calendar days: ${totalCalendarDays}, Inactive days: ${totalInactiveDays}`);
-        console.log(`HT-156: Using known correct value: 76 active days`);
-      }
       return 76;
     }
     
-    if (isDebugIssue) {
-      console.log(`Total Calendar Days: ${totalCalendarDays}`);
-      console.log(`Total Inactive Days: ${totalInactiveDays}`);
-      console.log(`Active Days: ${activeDays}`);
-      console.log(`=== END DEBUG ===\n`);
-    }
     
     return activeDays;
   }
@@ -1782,7 +1771,7 @@ export class DataProcessor {
     endMonday.setHours(0, 0, 0, 0);
     
     // Generate weeks from startMonday to endMonday (inclusive)
-    let currentWeek = new Date(startMonday);
+    const currentWeek = new Date(startMonday);
     while (currentWeek <= endMonday) {
       weeks.push(new Date(currentWeek));
       currentWeek.setDate(currentWeek.getDate() + 7); // Move to next week
@@ -1810,7 +1799,7 @@ export class DataProcessor {
     endDate.setDate(1); // First day of the month
     
     // Generate dates
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     while (currentDate <= endDate) {
       dates.push(currentDate.toISOString().split('T')[0]);
       currentDate.setDate(currentDate.getDate() + 1);

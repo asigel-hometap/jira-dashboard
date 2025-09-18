@@ -18,7 +18,7 @@ export function useWorkloadData() {
       } else {
         setError(result.error || 'Failed to fetch workload data');
       }
-    } catch (err) {
+    } catch {
       setError('Network error fetching data');
     } finally {
       setLoading(false);

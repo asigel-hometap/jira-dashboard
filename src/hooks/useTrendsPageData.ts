@@ -106,7 +106,8 @@ export function useTrendsPageData() {
     if (!trendData || trendData.length === 0) {
       return {
         labels: [],
-        datasets: []
+        healthDatasets: [],
+        statusDatasets: []
       };
     }
 

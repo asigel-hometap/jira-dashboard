@@ -26,14 +26,11 @@ export function useTrendsData() {
 
   const fetchTrendsData = useCallback(async () => {
     try {
-      console.log('Fetching extended trends data...');
       const response = await fetch('/api/extended-trends');
       const result = await response.json();
       
-      console.log('Extended trends data result:', result);
       if (result.success) {
         setTrendsData(result.data);
-        console.log(`Loaded extended trends: ${result.data.historicalDataPoints} historical + ${result.data.realTimeDataPoints} real-time data points`);
       }
     } catch (err) {
       console.error('Error fetching extended trends data:', err);
@@ -111,8 +108,8 @@ export function useTrendsData() {
       const dates = trendsData.dates || [];
       
       if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'number') {
-        let filteredData = data as number[];
-        let filteredDates = dates as unknown as string[];
+        const filteredData = data as number[];
+        const filteredDates = dates as unknown as string[];
         
         map.set(teamMember, { data: filteredData, dates: filteredDates });
       } else {

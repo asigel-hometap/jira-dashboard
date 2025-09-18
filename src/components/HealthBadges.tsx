@@ -24,7 +24,7 @@ const healthConfig = {
 
 const HealthBadges = React.memo(({ healthBreakdown }: HealthBadgesProps) => {
   const badges = Object.entries(healthBreakdown)
-    .filter(([_, count]) => count > 0)
+    .filter(([, count]) => count > 0)
     .map(([key, count]) => {
       const config = healthConfig[key as keyof typeof healthConfig];
       return (

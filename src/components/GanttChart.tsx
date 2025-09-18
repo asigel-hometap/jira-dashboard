@@ -24,15 +24,6 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400, showInactiv
   const [hoveredProject, setHoveredProject] = useState<string | null>(null);
   const [hiddenLegendItems, setHiddenLegendItems] = useState<Set<string>>(new Set());
 
-  // Debug: Log data received by Gantt chart (only in development)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('GanttChart received data:', data?.length || 0, 'projects');
-    console.log('GanttChart showInactivePeriods:', showInactivePeriods);
-    if (data && data.length > 0) {
-      console.log('First Gantt project:', data[0]);
-      console.log('First project inactive periods:', data[0]?.inactivePeriods);
-    }
-  }
 
   // Transform data for the chart
   const chartData = useMemo(() => {

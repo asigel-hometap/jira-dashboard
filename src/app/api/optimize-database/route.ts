@@ -1,19 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { initializeDatabase, getDatabaseService } from '@/lib/database-factory';
+import { NextRequest } from 'next/server';
+import { initializeDatabase } from '@/lib/database-factory';
 import { handleApiError, createSuccessResponse } from '@/lib/error-handler';
 import { ALL_INDEXES, PRIORITY_INDEXES, PERFORMANCE_QUERIES } from '@/lib/database-indexes';
+import { getPostgresPool } from '@/lib/postgres-database';
 
 export async function POST(request: NextRequest) {
   try {
     await initializeDatabase();
-    const dbService = getDatabaseService();
     
     const { searchParams } = new URL(request.url);
     const mode = searchParams.get('mode') || 'priority'; // 'priority', 'all', or 'check'
     
     if (mode === 'check') {
       // Check current performance
-      const client = await dbService.getPostgresPool().connect();
+      const client = await getPostgresPool().connect();
       try {
         const indexUsage = await client.query(PERFORMANCE_QUERIES.checkIndexUsage);
         const tableSizes = await client.query(PERFORMANCE_QUERIES.checkTableSizes);
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     
     for (const indexQuery of indexesToCreate) {
       try {
-        await dbService.getPostgresPool().query(indexQuery);
+        await getPostgresPool().query(indexQuery);
         const indexName = indexQuery.match(/CREATE INDEX.*?ON\s+(\w+)/)?.[1] || 'unknown';
         results.push({ index: indexName, status: 'created' });
         console.log(`✅ Created index: ${indexName}`);
@@ -67,10 +67,9 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     await initializeDatabase();
-    const dbService = getDatabaseService();
     
     // Check current performance
-    const client = await dbService.getPostgresPool().connect();
+    const client = await getPostgresPool().connect();
     try {
       const indexUsage = await client.query(PERFORMANCE_QUERIES.checkIndexUsage);
       const tableSizes = await client.query(PERFORMANCE_QUERIES.checkTableSizes);

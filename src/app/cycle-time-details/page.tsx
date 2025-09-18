@@ -41,15 +41,6 @@ export default function CycleTimeDetailsPage() {
   // Get unique assignees for dropdown
   const uniqueAssignees = Array.from(new Set(discoveryDetails.map(detail => detail.assignee).filter(Boolean))).sort();
 
-  // Debug: Log ganttData changes (only in development)
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Gantt data state changed:', ganttData.length, 'projects');
-      if (ganttData.length > 0) {
-        console.log('First project:', ganttData[0].projectKey, ganttData[0].assignee);
-      }
-    }
-  }, [ganttData]);
 
   const fetchDiscoveryDetails = async () => {
     try {
@@ -106,16 +97,7 @@ export default function CycleTimeDetailsPage() {
       
       const result = await response.json();
       
-      if (process.env.NODE_ENV === 'development') {
-        console.log('API result:', result);
-      }
-      
       if (result.success) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Gantt data fetched successfully:', result.data.length, 'projects');
-          console.log('First project inactive periods:', result.data[0]?.inactivePeriods);
-          console.log('Show inactive periods setting:', includeInactivePeriods);
-        }
         setGanttData(result.data);
       } else {
         console.error('Failed to fetch Gantt data:', result.error);

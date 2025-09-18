@@ -171,32 +171,13 @@ export async function getIssueChangelog(issueKey: string): Promise<JiraChangelog
   let attempts = 0;
   const maxAttempts = 10; // Prevent infinite loops
 
-  // Debug logging for HT-156
-  if (issueKey === 'HT-156') {
-    console.log(`\n=== Fetching changelog for ${issueKey} ===`);
-  }
-
   while (hasMore && attempts < maxAttempts) {
     await rateLimiter.waitIfNeeded();
     
     // Request changelog data (Jira API should return all available historical data by default)
     const endpoint = `/issue/${issueKey}/changelog?startAt=${startAt}&maxResults=${maxResults}`;
     
-    if (issueKey === 'HT-156') {
-      console.log(`Fetching changelog batch ${attempts + 1}: ${endpoint}`);
-    }
-    
     const response = await jiraRequest<any>(endpoint);
-    
-    if (issueKey === 'HT-156') {
-      console.log(`Response for ${issueKey}:`, {
-        hasValues: !!response.values,
-        valuesLength: response.values?.length || 0,
-        isLast: response.isLast,
-        startAt: response.startAt,
-        maxResults: response.maxResults
-      });
-    }
     
     if (response.values && Array.isArray(response.values)) {
       allHistories.push(...response.values);

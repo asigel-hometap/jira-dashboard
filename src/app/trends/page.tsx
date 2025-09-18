@@ -91,9 +91,9 @@ export default function TrendsPage() {
       clearInterval(stepInterval);
       
       if (result.success) {
-        setTrendData(result.data);
-        if (result.availableFilters) {
-          setAvailableFilters(result.availableFilters);
+        setTrendData(result.data.trendData);
+        if (result.data.availableFilters) {
+          setAvailableFilters(result.data.availableFilters);
         }
       } else {
         setError(result.error || 'Failed to fetch trend data');

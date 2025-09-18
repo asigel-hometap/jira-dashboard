@@ -4,7 +4,6 @@ import { getAllIssues, getIssueChangelog, getAllUsers, rateLimiter } from './jir
 import { parse } from 'csv-parse/sync';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { promisify } from 'util';
 
 export class DataProcessor {
   // Process Jira issues and store in database

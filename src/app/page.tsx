@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { WorkloadData } from '@/types/jira';
 import Sparkline from '@/components/Sparkline';
 import HealthBadges from '@/components/HealthBadges';
-import DateRangeFilter from '@/components/DateRangeFilter';
 
 interface DataContext {
   lastUpdated: Date;
@@ -19,7 +18,6 @@ export default function Home() {
   const [dataContext, setDataContext] = useState<DataContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState<{ startDate: string; endDate: string } | null>(null);
 
   const fetchWorkloadData = async () => {
     try {
@@ -70,12 +68,6 @@ export default function Home() {
     }
   };
 
-  const handleDateRangeChange = useCallback((startDate: string, endDate: string) => {
-    setDateRange({ startDate, endDate });
-  }, []);
-
-  // Memoize dateRange to prevent infinite re-renders
-  const memoizedDateRange = useMemo(() => dateRange, [dateRange?.startDate, dateRange?.endDate]);
 
   useEffect(() => {
     fetchWorkloadData();
@@ -143,22 +135,6 @@ export default function Home() {
         let filteredData = data as number[];
         let filteredDates = dates as unknown as string[];
         
-        // Apply date range filter if set
-        if (memoizedDateRange) {
-          const startDate = new Date(memoizedDateRange.startDate);
-          const endDate = new Date(memoizedDateRange.endDate);
-          
-          const filteredIndices: number[] = [];
-          filteredDates.forEach((date, index) => {
-            const currentDate = new Date(date);
-            if (currentDate >= startDate && currentDate <= endDate) {
-              filteredIndices.push(index);
-            }
-          });
-          
-          filteredData = filteredIndices.map(index => filteredData[index]);
-          filteredDates = filteredIndices.map(index => filteredDates[index]);
-        }
         
         map.set(teamMember, { data: filteredData, dates: filteredDates });
       } else {
@@ -167,7 +143,7 @@ export default function Home() {
     });
     
     return map;
-  }, [trendsData, teamMemberNames, memoizedDateRange]);
+  }, [trendsData, teamMemberNames]);
 
   if (loading) {
     return (
@@ -239,16 +215,6 @@ export default function Home() {
             Team Workload Overview
           </h2>
           
-          {/* Date Range Filter */}
-          {trendsData && trendsData.dates && (
-            <div className="mb-6">
-              <DateRangeFilter
-                onDateRangeChange={handleDateRangeChange}
-                availableDates={trendsData.dates as unknown as string[]}
-                className="max-w-2xl"
-              />
-            </div>
-          )}
           
           <div className="grid grid-cols-1 gap-6">
             {workloadData.map((member) => (

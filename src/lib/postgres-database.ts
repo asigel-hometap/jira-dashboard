@@ -190,8 +190,16 @@ export async function createPostgresTables(): Promise<void> {
       )
     `);
 
-    // Create indexes for better performance
+    // Create priority indexes for better performance
     await client.query(`
+      -- Core lookup indexes (highest priority)
+      CREATE INDEX IF NOT EXISTS idx_issues_key_lookup ON issues(key);
+      CREATE INDEX IF NOT EXISTS idx_issues_active_lookup ON issues(is_archived, status, updated DESC);
+      CREATE INDEX IF NOT EXISTS idx_status_transitions_issue_timestamp ON status_transitions(issue_key, timestamp);
+      CREATE INDEX IF NOT EXISTS idx_health_transitions_issue_timestamp ON health_transitions(issue_key, timestamp);
+      CREATE INDEX IF NOT EXISTS idx_cycle_time_cache_issue_lookup ON cycle_time_cache(issue_key);
+      
+      -- Basic indexes for common queries
       CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(status);
       CREATE INDEX IF NOT EXISTS idx_issues_assignee ON issues(assignee);
       CREATE INDEX IF NOT EXISTS idx_issues_health ON issues(health);

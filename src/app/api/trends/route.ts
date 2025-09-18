@@ -7,16 +7,14 @@ export async function GET(request: NextRequest) {
     await initializeDatabase();
     const dataProcessor = getDataProcessor();
     
-    // Extract filter parameters
-    const { searchParams } = new URL(request.url);
-    const assignees = searchParams.getAll('assignee');
-    const bizChamp = searchParams.get('bizChamp') || '';
-    
-    // Get trend data for the past 12 weeks with filters
-    const trendData = await dataProcessor.getTrendData({
-      assignees,
-      bizChamp
-    });
+            // Extract filter parameters
+            const { searchParams } = new URL(request.url);
+            const assignees = searchParams.getAll('assignee');
+            
+            // Get trend data for the past 12 weeks with filters
+            const trendData = await dataProcessor.getTrendData({
+              assignees
+            });
     
     // Get available filter options
     const availableFilters = await dataProcessor.getAvailableFilters();

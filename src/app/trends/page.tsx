@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
@@ -36,16 +36,13 @@ export default function TrendsPage() {
   const [error, setError] = useState<string | null>(null);
   const [seriesType, setSeriesType] = useState<'health' | 'status'>('health');
   const [filters, setFilters] = useState({
-    assignees: [] as string[],
-    bizChamp: ''
+    assignees: [] as string[]
   });
   const [tempFilters, setTempFilters] = useState({
-    assignees: [] as string[],
-    bizChamp: ''
+    assignees: [] as string[]
   });
   const [availableFilters, setAvailableFilters] = useState({
-    assignees: [] as string[],
-    bizChamps: [] as string[]
+    assignees: [] as string[]
   });
   const [loadingStep, setLoadingStep] = useState(0);
   const [loadingText, setLoadingText] = useState('');
@@ -83,9 +80,10 @@ export default function TrendsPage() {
       if (filters.assignees.length > 0) {
         filters.assignees.forEach(assignee => params.append('assignee', assignee));
       }
-      if (filters.bizChamp) params.append('bizChamp', filters.bizChamp);
       
-      const response = await fetch(`/api/trends?${params.toString()}`);
+      const url = `/api/trends?${params.toString()}`;
+      
+      const response = await fetch(url);
       const result = await response.json();
       
       // Clear intervals
@@ -109,6 +107,7 @@ export default function TrendsPage() {
     }
   }, [filters]);
 
+  // Initial data fetch
   useEffect(() => {
     fetchTrendData();
   }, [fetchTrendData]);
@@ -117,7 +116,7 @@ export default function TrendsPage() {
   useEffect(() => {
     if (availableFilters.assignees.length > 0) {
       // If no filters are currently applied, select all assignees by default
-      if (filters.assignees.length === 0 && !filters.bizChamp) {
+      if (filters.assignees.length === 0) {
         setTempFilters(prev => ({
           ...prev,
           assignees: availableFilters.assignees
@@ -132,21 +131,16 @@ export default function TrendsPage() {
         }));
       }
     }
-  }, [availableFilters.assignees, filters.assignees.length, filters.bizChamp]);
-
-  // Cleanup intervals on unmount
-  useEffect(() => {
-    return () => {
-      // This will be handled by the fetchTrendData function
-    };
-  }, []);
+  }, [availableFilters.assignees, filters.assignees.length]);
 
   const handleApplyFilters = () => {
     setFilters(tempFilters);
   };
 
   const handleClearFilters = () => {
-    const clearedFilters = { assignees: availableFilters.assignees, bizChamp: '' };
+    const clearedFilters = { 
+      assignees: availableFilters.assignees
+    };
     setTempFilters(clearedFilters);
     setFilters(clearedFilters);
   };
@@ -160,8 +154,12 @@ export default function TrendsPage() {
     }));
   };
 
-  const getChartData = () => {
+
+  const getChartData = useMemo(() => {
     const labels = trendData.map(d => d.week);
+    console.log('Chart data length:', trendData.length);
+    console.log('First few weeks:', trendData.slice(0, 5).map(d => d.week));
+    console.log('Last few weeks:', trendData.slice(-5).map(d => d.week));
     
     if (seriesType === 'health') {
       return {
@@ -267,7 +265,7 @@ export default function TrendsPage() {
         ],
       };
     }
-  };
+  }, [trendData, seriesType]);
 
   const chartOptions = {
     responsive: true,
@@ -318,6 +316,10 @@ export default function TrendsPage() {
           display: true,
           text: 'Week Beginning',
         },
+        ticks: {
+          maxTicksLimit: undefined, // Show all ticks
+          maxRotation: 45, // Rotate labels for better readability
+        },
       },
       y: {
         stacked: true,
@@ -344,7 +346,7 @@ export default function TrendsPage() {
         {/* Loading Text */}
         <div className="text-center space-y-2">
           <div className="text-lg font-medium text-gray-900">
-            {filters.assignees.length > 0 || filters.bizChamp 
+            {(filters.assignees.length > 0 || filters.startDate || filters.endDate)
               ? 'Analyzing Historical Data...' 
               : 'Preparing Trend Analysis...'
             }
@@ -356,7 +358,7 @@ export default function TrendsPage() {
         
         {/* Additional Info */}
         <div className="text-xs text-gray-400 text-center max-w-md">
-          {filters.assignees.length > 0 || filters.bizChamp 
+          {(filters.assignees.length > 0 || filters.startDate || filters.endDate)
             ? 'This may take a moment as we analyze historical changelog data for accurate trends.'
             : 'Using simplified analysis for faster loading. Apply filters for detailed historical analysis.'
           }
@@ -407,12 +409,12 @@ export default function TrendsPage() {
               </h2>
               <p className="text-sm text-gray-500 mt-1">
                 Weekly stacked bar chart showing project distribution
-                {filters.assignees.length === 0 && !filters.bizChamp && (
+                {(filters.assignees.length === 0 && !filters.startDate && !filters.endDate) && (
                   <span className="ml-2 text-blue-600 font-medium">
                     (Simplified analysis - shows project lifecycle)
                   </span>
                 )}
-                {(filters.assignees.length > 0 || filters.bizChamp) && (
+                {(filters.assignees.length > 0 || filters.startDate || filters.endDate) && (
                   <span className="ml-2 text-orange-600 font-medium">
                     (Full historical analysis - may take longer)
                   </span>
@@ -438,7 +440,7 @@ export default function TrendsPage() {
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-medium text-gray-700">Filters</h3>
-                {(filters.assignees.length > 0 || filters.bizChamp) && (
+                {(filters.assignees.length > 0 || filters.startDate || filters.endDate) && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                     Active
                   </span>
@@ -461,7 +463,7 @@ export default function TrendsPage() {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Assignee Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -502,22 +504,6 @@ export default function TrendsPage() {
                 )}
               </div>
 
-              {/* Business Champion Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Business Champion
-                </label>
-                <select
-                  value={tempFilters.bizChamp}
-                  onChange={(e) => setTempFilters(prev => ({ ...prev, bizChamp: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All Business Champions</option>
-                  {availableFilters.bizChamps.map(bizChamp => (
-                    <option key={bizChamp} value={bizChamp}>{bizChamp}</option>
-                  ))}
-                </select>
-              </div>
             </div>
           </div>
 
@@ -552,10 +538,11 @@ export default function TrendsPage() {
 
           {/* Chart */}
           <div className="h-[500px]">
-            <Bar data={getChartData()} options={chartOptions} />
+            <Bar data={getChartData} options={chartOptions} />
           </div>
         </div>
       </div>
     </div>
   );
 }
+

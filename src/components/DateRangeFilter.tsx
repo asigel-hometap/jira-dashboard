@@ -32,7 +32,7 @@ function DateRangeFilter({
 
   // Validate and apply date range
   useEffect(() => {
-    if (startDate && endDate) {
+    if (startDate && endDate && sortedDates.length > 0) {
       const earliestDate = sortedDates[0];
       const latestDate = sortedDates[sortedDates.length - 1];
 
@@ -60,7 +60,7 @@ function DateRangeFilter({
       // Apply the filter
       onDateRangeChange(startDate, endDate);
     }
-  }, [startDate, endDate, sortedDates, onDateRangeChange]);
+  }, [startDate, endDate, sortedDates]);
 
   const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setStartDate(e.target.value);

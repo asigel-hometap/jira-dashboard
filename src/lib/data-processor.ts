@@ -1658,7 +1658,6 @@ export class DataProcessor {
    */
   async getTrendData(filters: {
     assignees?: string[];
-    bizChamp?: string;
   } = {}): Promise<Array<{
     week: string;
     totalProjects: number;
@@ -1696,13 +1695,9 @@ export class DataProcessor {
       }
       
       
-      if (filters.bizChamp) {
-        allIssues = allIssues.filter(issue => issue.bizChamp === filters.bizChamp);
-        console.log(`Filtered by biz champ '${filters.bizChamp}': ${allIssues.length} issues`);
-      }
-      
-      // Generate past 12 weeks (Monday-based)
+      // Generate weeks for past 12 weeks
       const weeks = this.generatePast12Weeks();
+      console.log(`Using past 12 weeks (${weeks.length} weeks)`);
       
       const trendData = [];
       
@@ -1712,46 +1707,26 @@ export class DataProcessor {
       // Check if we have any meaningful filters applied
       // If all assignees are selected, treat it as no filter (use simplified analysis)
       const allAssigneesSelected = filters.assignees && filters.assignees.length === availableAssignees.length;
-      const hasFilters = (filters.assignees && filters.assignees.length > 0 && !allAssigneesSelected) || filters.bizChamp;
+      const hasAssigneeFilters = filters.assignees && filters.assignees.length > 0 && !allAssigneesSelected;
       
-      console.log(`Filter analysis: ${filters.assignees?.length || 0} assignees selected, ${availableAssignees.length} total available, allSelected: ${allAssigneesSelected}, hasFilters: ${hasFilters}`);
+      console.log(`Filter analysis: ${filters.assignees?.length || 0} assignees selected, ${availableAssignees.length} total available, allSelected: ${allAssigneesSelected}, hasAssigneeFilters: ${hasAssigneeFilters}`);
       
-      if (hasFilters) {
-        // Use historical analysis for filtered data (slower but accurate)
-        console.log('Using historical analysis for filtered data');
-        for (const week of weeks) {
-          console.log(`Processing week beginning ${week.toISOString().split('T')[0]}`);
-          const weekData = await this.analyzeWeekData(allIssues, week);
-          
-          trendData.push({
-            week: week.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
-            }),
-            totalProjects: weekData.totalProjects,
-            healthBreakdown: weekData.healthBreakdown,
-            statusBreakdown: weekData.statusBreakdown
-          });
-        }
-      } else {
-        // Use simplified historical analysis for default view (faster but still shows trends)
-        console.log('Using simplified historical analysis for default view');
-        for (const week of weeks) {
-          console.log(`Processing week beginning ${week.toISOString().split('T')[0]}`);
-          const weekData = await this.analyzeWeekDataSimplified(allIssues, week);
-          
-          trendData.push({
-            week: week.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
-            }),
-            totalProjects: weekData.totalProjects,
-            healthBreakdown: weekData.healthBreakdown,
-            statusBreakdown: weekData.statusBreakdown
-          });
-        }
+      // Use simplified analysis for all cases to improve performance
+      console.log('Using simplified analysis for better performance');
+      for (const week of weeks) {
+        console.log(`Processing week beginning ${week.toISOString().split('T')[0]}`);
+        const weekData = await this.analyzeWeekDataSimplified(allIssues, week);
+        
+        trendData.push({
+          week: week.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          }),
+          totalProjects: weekData.totalProjects,
+          healthBreakdown: weekData.healthBreakdown,
+          statusBreakdown: weekData.statusBreakdown
+        });
       }
       
       return trendData;
@@ -1783,6 +1758,66 @@ export class DataProcessor {
     }
     
     return weeks.reverse(); // Return in chronological order
+  }
+
+  /**
+   * Generate weeks within a date range, starting from Monday of each week
+   */
+  private generateWeeksInRange(startDateStr: string, endDateStr: string): Date[] {
+    const weeks = [];
+    const startDate = new Date(startDateStr);
+    const endDate = new Date(endDateStr);
+    
+    // Find the Monday of the week containing startDate
+    const startMonday = new Date(startDate);
+    const dayOfWeek = startDate.getDay();
+    const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Sunday = 0, so go back 6 days
+    startMonday.setDate(startDate.getDate() + daysToMonday);
+    startMonday.setHours(0, 0, 0, 0);
+    
+    // Find the Monday of the week containing endDate
+    const endMonday = new Date(endDate);
+    const endDayOfWeek = endDate.getDay();
+    const endDaysToMonday = endDayOfWeek === 0 ? -6 : 1 - endDayOfWeek;
+    endMonday.setDate(endDate.getDate() + endDaysToMonday);
+    endMonday.setHours(0, 0, 0, 0);
+    
+    // Generate weeks from startMonday to endMonday (inclusive)
+    let currentWeek = new Date(startMonday);
+    while (currentWeek <= endMonday) {
+      weeks.push(new Date(currentWeek));
+      currentWeek.setDate(currentWeek.getDate() + 7); // Move to next week
+    }
+    
+    return weeks;
+  }
+
+  /**
+   * Generate available dates for the date range filter
+   * Returns dates from 6 months ago to 1 month in the future
+   */
+  private generateAvailableDates(): string[] {
+    const dates = [];
+    const now = new Date();
+    
+    // Start from 6 months ago
+    const startDate = new Date(now);
+    startDate.setMonth(now.getMonth() - 6);
+    startDate.setDate(1); // First day of the month
+    
+    // End 1 month in the future
+    const endDate = new Date(now);
+    endDate.setMonth(now.getMonth() + 1);
+    endDate.setDate(1); // First day of the month
+    
+    // Generate dates
+    let currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      dates.push(currentDate.toISOString().split('T')[0]);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    return dates;
   }
 
   /**
@@ -2182,7 +2217,6 @@ export class DataProcessor {
    */
   async getAvailableFilters(): Promise<{
     assignees: string[];
-    bizChamps: string[];
   }> {
     try {
       const dbService = getDatabaseService();
@@ -2190,17 +2224,14 @@ export class DataProcessor {
       
       // Extract unique values for each filter (force rebuild)
       const assignees = [...new Set(allIssues.map(issue => issue.assignee).filter(Boolean))].sort() as string[];
-      const bizChamps = [...new Set(allIssues.map(issue => issue.bizChamp).filter(Boolean))].sort() as string[];
       
       return {
-        assignees,
-        bizChamps
+        assignees
       };
     } catch (error) {
       console.error('Error getting available filters:', error);
       return {
-        assignees: [],
-        bizChamps: []
+        assignees: []
       };
     }
   }

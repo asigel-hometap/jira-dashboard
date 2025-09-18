@@ -64,6 +64,14 @@ A Next.js dashboard for monitoring team member workload, tracking discovery cycl
 - **Team member names**: Had to map first names to full names for consistency
 
 ## Future Enhancements
+### Adam's List
+- [ ] Allow for manual overwriting of discovery start dates (to account for edge cases that can't be changed in Jira)
+- [ ] Set up weekly job that repulls and caches updated Jira data
+- [ ] Add support for discovery complexity: disply in certain tables, correlation analysis for discovery cycles by complexity
+- [ ] Use Jira user avatars
+- [ ] Workload page: click on health badge to reveal projects
+- [ ] View last comment for projects at risk
+- [ ] Trends Over Time: toggle between stacked bar and stacked 100% bar
 
 ### Health Visualization
 - [x] **Replaced progress bars with badge counts** - Better readability and space efficiency
@@ -105,19 +113,19 @@ A Next.js dashboard for monitoring team member workload, tracking discovery cycl
 - [x] **Add table filtering** - Filter by assignee, status, discovery start date range to eliminate horizontal scroll
 
 ### Sparklines
-- [ ] **Ensure sparklines fill full width of container** - Currently using fixed 400px width with viewBox scaling
-- [ ] **Add tooltips for project counts** - Show exact project count and date on hover
-- [ ] **Improve responsiveness** - Better handling of different container sizes
-- [ ] **Add animations** - Smooth transitions and hover effects
-- [ ] **Color coding improvements** - More sophisticated color schemes
+- [X] **Ensure sparklines fill full width of container** - Currently using fixed 400px width with viewBox scaling
+- [X] **Add tooltips for project counts** - Show exact project count and date on hover
+- [X] **Improve responsiveness** - Better handling of different container sizes
+- [X] **Add animations** - Smooth transitions and hover effects
+- [X] **Color coding improvements** - More sophisticated color schemes
 
 ### Dashboard Features
-- [ ] **Projects At Risk section** - Table showing projects needing attention
-- [ ] **Cycle Time Analysis** - Box-and-whisker charts for er version  times
-- [ ] **Trends Over Time** - Stacked bar charts for historical analysis
-- [ ] **Cycle Time Details** - Detailed table with specific metrics
+- [X] **Projects At Risk section** - Table showing projects needing attention
+- [X] **Cycle Time Analysis** - Box-and-whisker charts for completed discovery times
+- [X] **Trends Over Time** - Stacked bar charts for historical analysis
+- [X] **Cycle Time Details** - Detailed table with specific metrics
 - [ ] **Manual refresh button** - Allow users to trigger data updates
-- [ ] **Date range picker** - Filter data by custom date ranges
+- [X] **Date range picker** - Filter data by custom date ranges
 
 ### Data Integration
 - [ ] **Fix Jira API integration** - Resolve 410 error and implement proper authentication
@@ -126,11 +134,10 @@ A Next.js dashboard for monitoring team member workload, tracking discovery cycl
 - [ ] **Export functionality** - Download data as CSV or PDF
 
 ### UI/UX Improvements
-- [ ] **Loading states** - Better loading indicators and skeleton screens
+- [X] **Loading states** - Better loading indicators and skeleton screens
 - [ ] **Error handling** - User-friendly error messages and recovery options
 - [ ] **Mobile responsiveness** - Optimize for mobile and tablet views
 - [ ] **Accessibility** - Screen reader support and keyboard navigation
-- [ ] **Dark mode** - Theme switching capability
 
 ### Performance
 - [ ] **Data caching** - Implement Redis or in-memory caching

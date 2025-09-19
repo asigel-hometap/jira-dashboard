@@ -26,6 +26,12 @@ export interface JiraHealth {
   id: string;
 }
 
+export interface JiraDiscoveryComplexity {
+  self: string;
+  value: string;
+  id: string;
+}
+
 export interface JiraIssue {
   id: string;
   key: string;
@@ -37,6 +43,7 @@ export interface JiraIssue {
     customfield_10238: JiraHealth | null; // Health field
     customfield_10456: string | null; // Idea archived on
     customfield_10150: JiraUser[] | null; // Business champion (array)
+    customfield_11081: JiraDiscoveryComplexity | null; // Discovery Complexity field
     created: string;
     updated: string;
     duedate?: string | null;
@@ -87,6 +94,8 @@ export interface Issue {
   assigneeId: string | null;
   health: string | null;
   healthId: string | null;
+  discoveryComplexity?: string | null;
+  discoveryComplexityId?: string | null;
   created: Date;
   updated: Date;
   duedate: Date | null;
@@ -233,6 +242,12 @@ export const HEALTH_VALUES = {
   ON_HOLD: 'On Hold',
   MYSTERY: 'Mystery',
   COMPLETE: 'Complete'
+} as const;
+
+export const DISCOVERY_COMPLEXITY_VALUES = {
+  SIMPLE: 'Simple',
+  STANDARD: 'Standard',
+  COMPLEX: 'Complex'
 } as const;
 
 export const DISCOVERY_STATUSES = [

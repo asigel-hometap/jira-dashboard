@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
           name: issue.summary,
           assignee: issue.assignee,
           currentStatus: issue.status,
+          discoveryComplexity: issue.discoveryComplexity,
           discoveryStartDate: cycleInfo.discoveryStartDate?.toISOString() || null,
           discoveryEndDate: cycleInfo.discoveryEndDate?.toISOString() || null,
           endDateLogic: cycleInfo.endDateLogic,

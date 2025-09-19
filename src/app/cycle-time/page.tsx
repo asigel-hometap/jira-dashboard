@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import BoxPlotChart from '@/components/BoxPlotChart';
+import { useCycleTimeContext } from '@/contexts/CycleTimeContext';
 
 interface CycleTimeCohort {
   quarter: string;
@@ -27,6 +28,7 @@ interface ProjectDetail {
   key: string;
   summary: string;
   assignee: string;
+  discoveryComplexity?: string | null;
   discoveryStart: string;
   activeDiscoveryTime: number;
   calendarDiscoveryTime: number;
@@ -45,6 +47,12 @@ export default function CycleTimePage() {
   const [excludedIssues, setExcludedIssues] = useState<Set<string>>(new Set());
   const [togglingExclusion, setTogglingExclusion] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [complexityData, setComplexityData] = useState<any>(null);
+  const [complexityLoading, setComplexityLoading] = useState(false);
+  const [selectedComplexity, setSelectedComplexity] = useState<string | null>(null);
+  const [complexityProjectDetails, setComplexityProjectDetails] = useState<ProjectDetail[]>([]);
+  const [complexityDetailsLoading, setComplexityDetailsLoading] = useState(false);
+  const { activeTab, setActiveTab } = useCycleTimeContext();
 
   const fetchCycleTimeData = async () => {
     try {
@@ -65,8 +73,27 @@ export default function CycleTimePage() {
     }
   };
 
+  const fetchComplexityData = async () => {
+    try {
+      setComplexityLoading(true);
+      const response = await fetch(`/api/cycle-time-by-complexity?timeType=${timeType}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setComplexityData(result.data);
+      } else {
+        console.error('Error fetching complexity data:', result.error);
+      }
+    } catch (err) {
+      console.error('Error fetching complexity data:', err);
+    } finally {
+      setComplexityLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchCycleTimeData();
+    fetchComplexityData();
     fetchExcludedIssues();
   }, [timeType]);
 
@@ -94,6 +121,118 @@ export default function CycleTimePage() {
       setProjectDetails([]);
     } finally {
       setDetailsLoading(false);
+    }
+  };
+
+  const fetchComplexityProjectDetails = async (complexity: string) => {
+    try {
+      setComplexityDetailsLoading(true);
+      setSelectedComplexity(complexity);
+      
+      const response = await fetch(`/api/cycle-time-details-by-complexity?complexity=${complexity}&timeType=${timeType}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        // Add exclusion state to project details
+        const projectsWithExclusion = result.data.map((project: ProjectDetail) => ({
+          ...project,
+          isExcluded: excludedIssues.has(project.key)
+        }));
+        setComplexityProjectDetails(projectsWithExclusion);
+      } else {
+        console.error('Error fetching complexity project details:', result.error);
+        setComplexityProjectDetails([]);
+      }
+    } catch (err) {
+      console.error('Error fetching complexity project details:', err);
+      setComplexityProjectDetails([]);
+    } finally {
+      setComplexityDetailsLoading(false);
+    }
+  };
+
+  const refreshFromJira = async () => {
+    if (!selectedQuarter) return;
+    
+    try {
+      setDetailsLoading(true);
+      
+      // Get all issue keys from current data
+      const issueKeys = projectDetails.map(project => project.key);
+      
+      if (issueKeys.length === 0) {
+        console.log('No issues to refresh');
+        return;
+      }
+
+      // Refresh specific issues from Jira
+      const refreshResponse = await fetch('/api/refresh-specific-issues', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ issueKeys }),
+      });
+
+      const refreshResult = await refreshResponse.json();
+      
+      if (refreshResult.success) {
+        console.log(`Refreshed ${refreshResult.data.refreshedIssues.length} issues from Jira`);
+        
+        // Clear the project details cache for this quarter to force rebuild
+        await fetch(`/api/clear-project-details-cache?quarter=${selectedQuarter}`, {
+          method: 'POST'
+        });
+        
+        // Now fetch the updated data from database (this will rebuild the cache)
+        await fetchProjectDetails(selectedQuarter);
+      } else {
+        console.error('Failed to refresh from Jira:', refreshResult.error);
+      }
+    } catch (err) {
+      console.error('Error refreshing from Jira:', err);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  const refreshComplexityFromJira = async () => {
+    if (!selectedComplexity) return;
+    
+    try {
+      setComplexityDetailsLoading(true);
+      
+      // Get all issue keys from current data
+      const issueKeys = complexityProjectDetails.map(project => project.key);
+      
+      if (issueKeys.length === 0) {
+        console.log('No issues to refresh');
+        return;
+      }
+
+      // Refresh specific issues from Jira
+      const refreshResponse = await fetch('/api/refresh-specific-issues', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ issueKeys }),
+      });
+
+      const refreshResult = await refreshResponse.json();
+      
+      if (refreshResult.success) {
+        console.log(`Refreshed ${refreshResult.data.refreshedIssues.length} issues from Jira`);
+        
+        // Now fetch the updated data from database
+        await fetchComplexityProjectDetails(selectedComplexity);
+      } else {
+        console.error('Failed to refresh from Jira:', refreshResult.error);
+      }
+    } catch (err) {
+      console.error('Error refreshing from Jira:', err);
+    } finally {
+      setComplexityDetailsLoading(false);
     }
   };
 
@@ -240,9 +379,10 @@ export default function CycleTimePage() {
                 </button>
               </div>
               <p className="text-sm text-gray-500 mt-1">
-                Box-and-whisker analysis of {timeType} discovery cycle times by completion quarter
+                Analysis of completed discovery cycles
               </p>
             </div>
+            
             <div className="flex items-center gap-4">
               <div className="text-sm text-gray-500">
                 Total projects: {totalProjects}
@@ -371,10 +511,13 @@ export default function CycleTimePage() {
             </div>
           </div>
 
-          {/* Chart */}
-          <div className="mb-6">
-            <BoxPlotChart data={displayData} unit={unit} />
-          </div>
+          {/* Tab Content */}
+          {activeTab === 'quarter' && (
+            <>
+              {/* Chart */}
+              <div className="mb-6">
+                <BoxPlotChart data={displayData} unit={unit} />
+              </div>
 
           {/* Summary Statistics */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -427,12 +570,21 @@ export default function CycleTimePage() {
                   <h3 className="text-lg font-medium text-gray-900">
                     Projects in {selectedQuarter.replace('_2025', ' 2025')}
                   </h3>
-                  <button
-                    onClick={() => setSelectedQuarter(null)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    ✕
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={refreshFromJira}
+                      disabled={detailsLoading}
+                      className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+                    >
+                      {detailsLoading ? 'Refreshing...' : 'Refresh from Jira'}
+                    </button>
+                    <button
+                      onClick={() => setSelectedQuarter(null)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
               </div>
               
@@ -457,6 +609,9 @@ export default function CycleTimePage() {
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Assignee
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Discovery Complexity
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Discovery Start
@@ -492,6 +647,19 @@ export default function CycleTimePage() {
                             {project.assignee}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              project.discoveryComplexity === 'Simple' 
+                                ? 'bg-green-100 text-green-800' 
+                                : project.discoveryComplexity === 'Standard'
+                                ? 'bg-blue-100 text-blue-800'
+                                : project.discoveryComplexity === 'Complex'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-slate-100 text-slate-800'
+                            }`}>
+                              {project.discoveryComplexity || 'Not Set'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {project.discoveryStart}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -525,6 +693,252 @@ export default function CycleTimePage() {
                   </table>
                 </div>
               )}
+            </div>
+          )}
+            </>
+          )}
+
+          {activeTab === 'complexity' && (
+            <div className="mt-6">
+              {/* Cycle Time by Complexity */}
+          <div className="bg-white border border-gray-200 rounded-lg">
+            <div className="px-4 py-3 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">
+                Cycle Time by Complexity
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Analysis across all quarters - {timeType === 'calendar' ? 'Calendar' : 'Active'} days
+              </p>
+            </div>
+            
+            {complexityLoading ? (
+              <div className="p-8 text-center text-gray-500">
+                <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin mx-auto mb-2"></div>
+                Loading complexity analysis...
+              </div>
+            ) : complexityData ? (
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {Object.entries(complexityData.complexityGroups).map(([complexity, group]: [string, any]) => (
+                    <div 
+                      key={complexity} 
+                      className={`bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors ${
+                        selectedComplexity === complexity ? 'ring-2 ring-blue-500 bg-blue-50' : ''
+                      }`}
+                      onClick={() => fetchComplexityProjectDetails(complexity)}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-medium text-gray-900 capitalize">
+                          {complexity}
+                        </h4>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          complexity === 'Simple' 
+                            ? 'bg-green-100 text-green-800' 
+                            : complexity === 'Standard'
+                            ? 'bg-blue-100 text-blue-800'
+                            : complexity === 'Complex'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-slate-100 text-slate-800'
+                        }`}>
+                          {group.size} projects
+                        </span>
+                      </div>
+                      
+                      {group.size > 0 ? (
+                        <div className="space-y-2">
+                          <div className="text-2xl font-bold text-gray-900">
+                            {unit === 'weeks' 
+                              ? Math.round(group.stats.mean / 7 * 10) / 10 
+                              : group.stats.mean
+                            } {unit}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Average cycle time
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4 text-xs">
+                            <div>
+                              <div className="text-gray-500">Median</div>
+                              <div className="font-medium">
+                                {unit === 'weeks' 
+                                  ? Math.round(group.stats.median / 7 * 10) / 10 
+                                  : group.stats.median
+                                } {unit}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-gray-500">Range</div>
+                              <div className="font-medium">
+                                {unit === 'weeks' 
+                                  ? `${Math.round(group.stats.min / 7 * 10) / 10}-${Math.round(group.stats.max / 7 * 10) / 10}`
+                                  : `${group.stats.min}-${group.stats.max}`
+                                } {unit}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {group.size < 5 && (
+                            <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                              ⚠️ Small sample size ({group.size} projects)
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500">
+                          No completed projects
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="mt-6 text-xs text-gray-500">
+                  <p>
+                    <strong>Forecasting Guidelines:</strong> Use these averages as starting points for project planning. 
+                    Consider the range and sample size when setting expectations.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-8 text-center text-gray-500">
+                No complexity data available
+              </div>
+            )}
+
+            {/* Complexity Project Details Table */}
+            {selectedComplexity && (
+              <div className="mt-6 bg-white border border-gray-200 rounded-lg">
+                <div className="px-4 py-3 border-b border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium text-gray-900">
+                      {selectedComplexity} Projects
+                    </h3>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={refreshComplexityFromJira}
+                        disabled={complexityDetailsLoading}
+                        className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+                      >
+                        {complexityDetailsLoading ? 'Refreshing...' : 'Refresh from Jira'}
+                      </button>
+                      <button
+                        onClick={() => setSelectedComplexity(null)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                {complexityDetailsLoading ? (
+                  <div className="p-4 text-center text-gray-500">
+                    Loading project details...
+                  </div>
+                ) : complexityProjectDetails.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    No projects found for this complexity level
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Project Key
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Summary
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Assignee
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Discovery Complexity
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Discovery Start
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Active Discovery Time
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Calendar Discovery Time
+                          </th>
+                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Exclude
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {complexityProjectDetails.map((project, index) => (
+                          <tr key={project.key} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <a 
+                                href={`https://hometap.atlassian.net/browse/${project.key}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 hover:underline"
+                              >
+                                {project.key}
+                              </a>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                              {project.summary}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {project.assignee}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                project.discoveryComplexity === 'Simple' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : project.discoveryComplexity === 'Standard'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : project.discoveryComplexity === 'Complex'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-slate-100 text-slate-800'
+                              }`}>
+                                {project.discoveryComplexity || 'Not Set'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {project.discoveryStart}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {unit === 'weeks' ? Math.round(project.activeDiscoveryTime / 7 * 10) / 10 : project.activeDiscoveryTime} {unit}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {unit === 'weeks' ? Math.round(project.calendarDiscoveryTime / 7 * 10) / 10 : project.calendarDiscoveryTime} {unit}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                              <button
+                                onClick={() => toggleExclusion(project.key)}
+                                disabled={togglingExclusion === project.key}
+                                className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                  excludedIssues.has(project.key)
+                                    ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                                } ${togglingExclusion === project.key ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                              >
+                                {togglingExclusion === project.key ? (
+                                  <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                                ) : excludedIssues.has(project.key) ? (
+                                  'Excluded'
+                                ) : (
+                                  'Include'
+                                )}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
             </div>
           )}
 

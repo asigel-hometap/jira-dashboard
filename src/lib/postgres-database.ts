@@ -52,6 +52,8 @@ export async function createPostgresTables(): Promise<void> {
         assignee_id VARCHAR(255),
         health VARCHAR(255),
         health_id VARCHAR(255),
+        discovery_complexity VARCHAR(255),
+        discovery_complexity_id VARCHAR(255),
         created TIMESTAMP NOT NULL,
         updated TIMESTAMP NOT NULL,
         duedate TIMESTAMP,
@@ -185,6 +187,8 @@ export async function createPostgresTables(): Promise<void> {
         discovery_start_date VARCHAR(255),
         calendar_days_in_discovery INTEGER,
         active_days_in_discovery INTEGER,
+        discovery_complexity VARCHAR(255),
+        discovery_complexity_id VARCHAR(255),
         calculated_at VARCHAR(255) NOT NULL,
         UNIQUE(quarter, issue_key)
       )
@@ -261,9 +265,10 @@ export class PostgresDatabaseService {
       await client.query(`
         INSERT INTO issues (
           id, key, summary, status, status_id, assignee, assignee_id,
-          health, health_id, created, updated, duedate, priority, labels,
+          health, health_id, discovery_complexity, discovery_complexity_id,
+          created, updated, duedate, priority, labels,
           biz_champ, biz_champ_id, is_archived
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
         ON CONFLICT (key) DO UPDATE SET
           summary = EXCLUDED.summary,
           status = EXCLUDED.status,
@@ -272,6 +277,8 @@ export class PostgresDatabaseService {
           assignee_id = EXCLUDED.assignee_id,
           health = EXCLUDED.health,
           health_id = EXCLUDED.health_id,
+          discovery_complexity = EXCLUDED.discovery_complexity,
+          discovery_complexity_id = EXCLUDED.discovery_complexity_id,
           updated = EXCLUDED.updated,
           duedate = EXCLUDED.duedate,
           priority = EXCLUDED.priority,
@@ -283,6 +290,7 @@ export class PostgresDatabaseService {
       `, [
         issue.id, issue.key, issue.summary, issue.status, issue.statusId,
         issue.assignee, issue.assigneeId, issue.health, issue.healthId,
+        issue.discoveryComplexity, issue.discoveryComplexityId,
         issue.created, issue.updated, issue.duedate, issue.priority,
         issue.labels, issue.bizChamp, issue.bizChampId, issue.isArchived
       ]);
@@ -319,6 +327,8 @@ export class PostgresDatabaseService {
       assigneeId: row.assignee_id,
       health: row.health,
       healthId: row.health_id,
+      discoveryComplexity: row.discovery_complexity,
+      discoveryComplexityId: row.discovery_complexity_id,
       created: new Date(row.created),
       updated: new Date(row.updated),
       duedate: row.duedate ? new Date(row.duedate) : null,
@@ -597,18 +607,21 @@ export class PostgresDatabaseService {
       await client.query(`
         INSERT INTO project_details_cache (
           quarter, issue_key, summary, assignee, discovery_start_date,
-          calendar_days_in_discovery, active_days_in_discovery, calculated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          calendar_days_in_discovery, active_days_in_discovery, discovery_complexity, discovery_complexity_id, calculated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         ON CONFLICT (quarter, issue_key) DO UPDATE SET
           summary = EXCLUDED.summary,
           assignee = EXCLUDED.assignee,
           discovery_start_date = EXCLUDED.discovery_start_date,
           calendar_days_in_discovery = EXCLUDED.calendar_days_in_discovery,
           active_days_in_discovery = EXCLUDED.active_days_in_discovery,
+          discovery_complexity = EXCLUDED.discovery_complexity,
+          discovery_complexity_id = EXCLUDED.discovery_complexity_id,
           calculated_at = EXCLUDED.calculated_at
       `, [
         details.quarter, details.issueKey, details.summary, details.assignee,
-        details.discoveryStartDate, details.calendarDaysInDiscovery, details.activeDaysInDiscovery, details.calculatedAt
+        details.discoveryStartDate, details.calendarDaysInDiscovery, details.activeDaysInDiscovery, 
+        details.discoveryComplexity, details.discoveryComplexityId, details.calculatedAt
       ]);
     } finally {
       client.release();
@@ -619,7 +632,7 @@ export class PostgresDatabaseService {
     const client = await this.pool.connect();
     try {
       const result = await client.query(
-        'SELECT issue_key, summary, assignee, discovery_start_date, calendar_days_in_discovery, active_days_in_discovery FROM project_details_cache WHERE quarter = $1 ORDER BY calendar_days_in_discovery DESC',
+        'SELECT issue_key, summary, assignee, discovery_start_date, calendar_days_in_discovery, active_days_in_discovery, discovery_complexity, discovery_complexity_id FROM project_details_cache WHERE quarter = $1 ORDER BY calendar_days_in_discovery DESC',
         [quarter]
       );
       return result.rows.map((row: any) => ({
@@ -628,7 +641,9 @@ export class PostgresDatabaseService {
         assignee: row.assignee,
         discoveryStartDate: row.discovery_start_date,
         calendarDaysInDiscovery: row.calendar_days_in_discovery,
-        activeDaysInDiscovery: row.active_days_in_discovery
+        activeDaysInDiscovery: row.active_days_in_discovery,
+        discoveryComplexity: row.discovery_complexity,
+        discoveryComplexityId: row.discovery_complexity_id
       }));
     } finally {
       client.release();

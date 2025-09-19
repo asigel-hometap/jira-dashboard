@@ -5,6 +5,7 @@ interface GanttData {
   projectKey: string;
   projectName: string;
   assignee: string;
+  discoveryComplexity?: string | null;
   discoveryStart: string;
   discoveryEnd: string;
   endDateLogic: string;
@@ -51,14 +52,10 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400, showInactiv
 
     // Filter out hidden legend items
     const filteredData = sortedData.filter(project => {
-      const endDateLogic = project.endDateLogic;
-      const isStillInDiscovery = project.isStillInDiscovery;
+      const discoveryComplexity = project.discoveryComplexity || 'Not Set';
       
-      // Check if this project type should be hidden
-      if (isStillInDiscovery && hiddenLegendItems.has('Still in Discovery')) {
-        return false;
-      }
-      if (!isStillInDiscovery && hiddenLegendItems.has(endDateLogic)) {
+      // Check if this Discovery Complexity should be hidden
+      if (hiddenLegendItems.has(discoveryComplexity)) {
         return false;
       }
       
@@ -130,9 +127,9 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400, showInactiv
     };
   }, [data, hiddenLegendItems, showInactivePeriods]);
 
-  // Get unique end date logic types for legend
-  const endDateLogicTypes = useMemo(() => {
-    const types = new Set(data.map(d => d.endDateLogic));
+  // Get unique Discovery Complexity types for legend
+  const discoveryComplexityTypes = useMemo(() => {
+    const types = new Set(data.map(d => d.discoveryComplexity).filter(Boolean));
     return Array.from(types).sort();
   }, [data]);
 
@@ -152,7 +149,17 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400, showInactiv
     });
   };
 
-  // Color mapping for end date logic
+  // Color mapping for Discovery Complexity
+  const getDiscoveryComplexityColor = (discoveryComplexity: string | null | undefined) => {
+    const colors: { [key: string]: string } = {
+      'Simple': '#10B981', // Green
+      'Standard': '#3B82F6', // Blue
+      'Complex': '#F59E0B', // Yellow
+    };
+    return colors[discoveryComplexity || ''] || '#64748B'; // Slate for "Not Set"
+  };
+
+  // Color mapping for end date logic (keeping for backward compatibility)
   const getEndDateLogicColor = (endDateLogic: string) => {
     const colors: { [key: string]: string } = {
       'Build Transition': '#10B981', // Green
@@ -217,40 +224,44 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400, showInactiv
     <div className="w-full">
       {/* Legend */}
       <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">Legend (click to toggle)</h4>
+        <h4 className="text-sm font-medium text-gray-700 mb-2">Discovery Complexity (click to toggle)</h4>
         <div className="flex flex-wrap gap-4 text-sm">
-          {endDateLogicTypes.map((type) => {
-            const isHidden = hiddenLegendItems.has(type);
+          {discoveryComplexityTypes.map((complexity) => {
+            const isHidden = hiddenLegendItems.has(complexity || 'Not Set');
             return (
               <div 
-                key={type} 
+                key={complexity} 
                 className={`flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity ${
                   isHidden ? 'opacity-50' : ''
                 }`}
-                onClick={() => toggleLegendItem(type)}
+                onClick={() => toggleLegendItem(complexity || 'Not Set')}
               >
                 <div 
                   className="w-3 h-3 rounded-full" 
-                  style={{ backgroundColor: getEndDateLogicColor(type) }}
+                  style={{ backgroundColor: getDiscoveryComplexityColor(complexity) }}
                 />
                 <span className={`text-gray-600 ${isHidden ? 'line-through' : ''}`}>
-                  {type}
+                  {complexity}
                 </span>
               </div>
             );
           })}
-          {hasStillInDiscovery && (
+          {/* Show "Not Set" if we have projects without Discovery Complexity */}
+          {data.some(d => !d.discoveryComplexity) && (
             <div 
               className={`flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity ${
-                hiddenLegendItems.has('Still in Discovery') ? 'opacity-50' : ''
+                hiddenLegendItems.has('Not Set') ? 'opacity-50' : ''
               }`}
-              onClick={() => toggleLegendItem('Still in Discovery')}
+              onClick={() => toggleLegendItem('Not Set')}
             >
-              <div className="w-3 h-3 rounded-full bg-yellow-400" />
+              <div 
+                className="w-3 h-3 rounded-full" 
+                style={{ backgroundColor: getDiscoveryComplexityColor(null) }}
+              />
               <span className={`text-gray-600 ${
-                hiddenLegendItems.has('Still in Discovery') ? 'line-through' : ''
+                hiddenLegendItems.has('Not Set') ? 'line-through' : ''
               }`}>
-                Still in Discovery
+                Not Set
               </span>
             </div>
           )}
@@ -305,12 +316,15 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400, showInactiv
                 <div className="flex-1 relative h-8 bg-gray-100">
                   {/* Discovery Cycle Bar */}
                   <div
-                    className={`absolute top-1 h-6 rounded-sm flex items-center justify-end pr-1 ${
-                      project.isStillInDiscovery 
-                        ? 'bg-gradient-to-r from-blue-200 to-blue-300 border border-blue-400' 
-                        : 'bg-blue-200 border border-blue-300'
-                    }`}
-                    style={getBarStyle(project)}
+                    className="absolute top-1 h-6 rounded-sm flex items-center justify-end pr-1"
+                    style={{
+                      ...getBarStyle(project),
+                      backgroundColor: project.isStillInDiscovery 
+                        ? getDiscoveryComplexityColor(project.discoveryComplexity)
+                        : getDiscoveryComplexityColor(project.discoveryComplexity),
+                      border: `1px solid ${getDiscoveryComplexityColor(project.discoveryComplexity)}`,
+                      opacity: project.isStillInDiscovery ? 0.8 : 1
+                    }}
                   >
                     {/* Inactive Period Segments */}
                     {showInactivePeriods && project.inactivePeriods && project.inactivePeriods.length > 0 && (

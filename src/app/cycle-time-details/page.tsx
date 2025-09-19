@@ -8,6 +8,7 @@ interface DiscoveryCycleDetail {
   name: string;
   assignee: string;
   currentStatus: string;
+  discoveryComplexity: string | null;
   discoveryStartDate: string | null;
   endDateLogic: string;
   calendarDaysInDiscovery: number | null;
@@ -61,6 +62,44 @@ export default function CycleTimeDetailsPage() {
     }
   };
 
+  const refreshFromJira = async () => {
+    try {
+      setLoading(true);
+      
+      // Get all issue keys from current data
+      const issueKeys = discoveryDetails.map(detail => detail.key);
+      
+      if (issueKeys.length === 0) {
+        setError('No issues to refresh');
+        return;
+      }
+
+      // Refresh specific issues from Jira
+      const refreshResponse = await fetch('/api/refresh-specific-issues', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ issueKeys }),
+      });
+
+      const refreshResult = await refreshResponse.json();
+      
+      if (refreshResult.success) {
+        console.log(`Refreshed ${refreshResult.data.refreshedIssues.length} issues from Jira`);
+        
+        // Now fetch the updated data from database
+        await fetchDiscoveryDetails();
+      } else {
+        setError(refreshResult.error || 'Failed to refresh data from Jira');
+      }
+    } catch (err) {
+      setError('Network error refreshing from Jira');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch Gantt data with specific inactive periods setting
   const fetchGanttDataWithInactivePeriods = async (includeInactivePeriods: boolean) => {
     setGanttLoading(true);
@@ -98,6 +137,10 @@ export default function CycleTimeDetailsPage() {
       const result = await response.json();
       
       if (result.success) {
+        console.log(`Gantt data fetched successfully: ${result.data.length} projects`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Gantt data projects:', result.data.map((p: any) => ({ key: p.projectKey, assignee: p.assignee })));
+        }
         setGanttData(result.data);
       } else {
         console.error('Failed to fetch Gantt data:', result.error);
@@ -307,9 +350,8 @@ export default function CycleTimeDetailsPage() {
     if (process.env.NODE_ENV === 'development') {
       console.log('Assignee filter changed to:', assigneeFilter);
     }
-    if (assigneeFilter !== undefined) { // Only fetch if filter is actually set
-      fetchGanttData();
-    }
+    // Always fetch Gantt data when assignee filter changes (including when cleared)
+    fetchGanttData();
   }, [assigneeFilter]);
 
   if (loading) {
@@ -332,7 +374,7 @@ export default function CycleTimeDetailsPage() {
               {error}
             </div>
             <button
-              onClick={fetchDiscoveryDetails}
+              onClick={refreshFromJira}
               className="mt-2 bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700"
             >
               Retry
@@ -356,11 +398,11 @@ export default function CycleTimeDetailsPage() {
                 Showing {filteredDetails.length} of {discoveryDetails.length} projects
               </div>
               <button
-                onClick={fetchDiscoveryDetails}
+                onClick={refreshFromJira}
                 disabled={loading}
                 className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
               >
-                {loading ? 'Refreshing...' : 'Refresh Data'}
+                {loading ? 'Refreshing from Jira...' : 'Refresh from Jira'}
               </button>
             </div>
           </div>
@@ -544,6 +586,9 @@ export default function CycleTimeDetailsPage() {
                         {getSortIcon('currentStatus')}
                       </div>
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Discovery Complexity
+                    </th>
                     <th 
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
                       onClick={() => handleSort('discoveryStartDate')}
@@ -603,6 +648,19 @@ export default function CycleTimeDetailsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {project.currentStatus}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          project.discoveryComplexity === 'Simple' 
+                            ? 'bg-green-100 text-green-800' 
+                            : project.discoveryComplexity === 'Standard'
+                            ? 'bg-blue-100 text-blue-800'
+                            : project.discoveryComplexity === 'Complex'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-slate-100 text-slate-800'
+                        }`}>
+                          {project.discoveryComplexity || 'Not Set'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatDate(project.discoveryStartDate)}

@@ -50,6 +50,8 @@ export async function POST() {
             assigneeId: jiraIssue.fields.assignee?.accountId || null,
             health: jiraIssue.fields.customfield_10238?.value || null,
             healthId: jiraIssue.fields.customfield_10238?.id || null,
+            discoveryComplexity: jiraIssue.fields.customfield_11081?.value || null,
+            discoveryComplexityId: jiraIssue.fields.customfield_11081?.id || null,
             created: new Date(jiraIssue.fields.created),
             updated: new Date(jiraIssue.fields.updated),
             duedate: jiraIssue.fields.duedate ? new Date(jiraIssue.fields.duedate) : null,

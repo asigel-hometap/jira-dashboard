@@ -43,7 +43,7 @@ export async function getAllIssuesForCycleAnalysis(): Promise<JiraIssue[]> {
     console.log(`Fetching all issues batch ${attempts + 1}${nextPageToken ? `, nextPageToken: ${nextPageToken.substring(0, 20)}...` : ''}`);
     
     // Fetch ALL projects including Done status for cycle analysis
-    let endpoint = `/search/jql?jql=project=${JIRA_PROJECT_KEY} ORDER BY key ASC&maxResults=${maxResults}&fields=summary,status,assignee,created,updated,customfield_10238,resolution,labels,customfield_10456,customfield_10150`;
+    let endpoint = `/search/jql?jql=project=${JIRA_PROJECT_KEY} ORDER BY key ASC&maxResults=${maxResults}&fields=summary,status,assignee,created,updated,customfield_10238,resolution,labels,customfield_10456,customfield_10150,customfield_11081`;
     
     if (nextPageToken) {
       endpoint += `&nextPageToken=${encodeURIComponent(nextPageToken)}`;
@@ -94,7 +94,7 @@ export async function getAllIssues(): Promise<JiraIssue[]> {
   while (hasMore && attempts < maxAttempts) {
     console.log(`Fetching issues batch ${attempts + 1}, startAt: ${startAt}`);
     
-    const endpoint = `/search/jql?jql=project=${JIRA_PROJECT_KEY} AND statusCategory NOT IN ("Done", "To Do") ORDER BY key ASC&startAt=${startAt}&maxResults=${maxResults}&fields=summary,status,assignee,created,updated,customfield_10238,resolution,labels,customfield_10456,customfield_10150`;
+    const endpoint = `/search/jql?jql=project=${JIRA_PROJECT_KEY} AND statusCategory NOT IN ("Done", "To Do") ORDER BY key ASC&startAt=${startAt}&maxResults=${maxResults}&fields=summary,status,assignee,created,updated,customfield_10238,resolution,labels,customfield_10456,customfield_10150,customfield_11081`;
     const response = await jiraRequest<{
       issues: JiraIssue[];
       total?: number;

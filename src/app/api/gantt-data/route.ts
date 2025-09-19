@@ -89,6 +89,7 @@ export async function GET(request: NextRequest) {
             projectKey: project.key,
             projectName: project.summary,
             assignee: project.assignee, // Use the filtered project's assignee
+            discoveryComplexity: project.discoveryComplexity,
             discoveryStart: cache.discovery_start_date?.split('T')[0] || new Date().toISOString().split('T')[0],
             discoveryEnd: discoveryEnd,
             endDateLogic: cache.end_date_logic || 'Still in Discovery',
@@ -102,12 +103,37 @@ export async function GET(request: NextRequest) {
           };
         }
         
-        // Fallback to real-time calculation if not cached
+        // Fallback to real-time calculation if not cached (with timeout)
         console.log(`No cache found for ${project.key}, calculating in real-time`);
         const { getDataProcessor } = await import('@/lib/data-processor');
         const dataProcessor = getDataProcessor();
         
-        const cycleInfo = await dataProcessor.calculateDiscoveryCycleInfo(project.key);
+        // Add timeout to prevent hanging
+        const cycleInfoPromise = dataProcessor.calculateDiscoveryCycleInfo(project.key);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout calculating cycle info')), 5000)
+        );
+        
+        let cycleInfo;
+        try {
+          cycleInfo = await Promise.race([cycleInfoPromise, timeoutPromise]) as any;
+        } catch (error) {
+          console.warn(`Timeout or error calculating cycle info for ${project.key}:`, error instanceof Error ? error.message : String(error));
+          // Return fallback data for this project
+          return {
+            projectKey: project.key,
+            projectName: project.summary,
+            assignee: project.assignee,
+            discoveryComplexity: project.discoveryComplexity,
+            discoveryStart: new Date().toISOString().split('T')[0],
+            discoveryEnd: new Date().toISOString().split('T')[0],
+            endDateLogic: 'Error',
+            calendarDays: 0,
+            activeDays: 0,
+            inactivePeriods: [],
+            isStillInDiscovery: true
+          };
+        }
         
         // Get inactive periods for this project (only if requested and with shorter timeout)
         let inactivePeriods = [];
@@ -142,6 +168,7 @@ export async function GET(request: NextRequest) {
           projectKey: project.key,
           projectName: project.summary,
           assignee: project.assignee,
+          discoveryComplexity: project.discoveryComplexity,
           discoveryStart: cycleInfo.discoveryStartDate?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
           discoveryEnd: discoveryEnd,
           endDateLogic: endDateLogic,
@@ -160,6 +187,7 @@ export async function GET(request: NextRequest) {
           projectKey: project.key,
           projectName: project.summary,
           assignee: project.assignee,
+          discoveryComplexity: project.discoveryComplexity,
           discoveryStart: new Date().toISOString().split('T')[0],
           discoveryEnd: new Date().toISOString().split('T')[0],
           endDateLogic: 'Error',

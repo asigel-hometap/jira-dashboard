@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
             key: project.issueKey,
             summary: project.summary,
             assignee: project.assignee,
+            discoveryComplexity: project.discoveryComplexity,
             discoveryStart: project.discoveryStartDate,
             discoveryEnd: cycleCache?.[0]?.discovery_end_date?.split('T')[0] || null,
             endDateLogic: cycleCache?.[0]?.end_date_logic || 'Still in Discovery',
@@ -94,6 +95,7 @@ export async function GET(request: NextRequest) {
         // If not in database, try to get from Jira API for better data
         let summary = issue?.summary || `Project ${cached.issueKey}`;
         let assignee = issue?.assignee || 'Unknown';
+        let discoveryComplexity = issue?.discoveryComplexity || null;
         
         if (!issue) {
           try {
@@ -105,6 +107,7 @@ export async function GET(request: NextRequest) {
             if (jiraIssue) {
               summary = jiraIssue.fields.summary;
               assignee = jiraIssue.fields.assignee?.displayName || 'Unknown';
+              discoveryComplexity = jiraIssue.fields.customfield_11081?.value || null;
               console.log(`Found Jira data for ${cached.issueKey}: ${summary}`);
             }
           } catch (error) {
@@ -116,6 +119,7 @@ export async function GET(request: NextRequest) {
           issueKey: cached.issueKey,
           summary: summary,
           assignee: assignee,
+          discoveryComplexity: discoveryComplexity,
           discoveryStartDate: cached.discoveryStartDate.toISOString().split('T')[0],
           calendarDaysInDiscovery: cached.calendarDaysInDiscovery || 0,
           activeDaysInDiscovery: cached.activeDaysInDiscovery || 0
@@ -129,6 +133,8 @@ export async function GET(request: NextRequest) {
           issueKey: project.issueKey,
           summary: project.summary,
           assignee: project.assignee,
+          discoveryComplexity: project.discoveryComplexity,
+          discoveryComplexityId: null, // We don't store the ID in this context
           discoveryStartDate: project.discoveryStartDate,
           calendarDaysInDiscovery: project.calendarDaysInDiscovery,
           activeDaysInDiscovery: project.activeDaysInDiscovery,
@@ -145,6 +151,7 @@ export async function GET(request: NextRequest) {
         key: project.issueKey,
         summary: project.summary,
         assignee: project.assignee,
+        discoveryComplexity: project.discoveryComplexity,
         discoveryStart: project.discoveryStartDate,
         activeDiscoveryTime: project.activeDaysInDiscovery,
         calendarDiscoveryTime: project.calendarDaysInDiscovery

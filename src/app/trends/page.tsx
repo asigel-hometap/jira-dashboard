@@ -38,9 +38,9 @@ export default function TrendsPage() {
                     className="bg-blue-600 h-2 rounded-full transition-all duration-500"
                     style={{ width: `${(loadingStep / 2) * 100}%` }}
                   ></div>
-                </div>
-              </div>
-            </div>
+          </div>
+        </div>
+          </div>
           </div>
         </div>
       </div>
@@ -76,8 +76,8 @@ export default function TrendsPage() {
           <h1 className="text-3xl font-bold text-gray-900">Trends Over Time</h1>
           <p className="mt-2 text-gray-600">
             Track project health and status trends across the team
-          </p>
-        </div>
+              </p>
+            </div>
 
         {/* Filters */}
         <div className="bg-white rounded-lg shadow mb-8">
@@ -127,8 +127,8 @@ export default function TrendsPage() {
                 Clear All
               </button>
             </div>
-          </div>
-        </div>
+              </div>
+              </div>
 
         {/* Chart Controls */}
         <div className="bg-white rounded-lg shadow mb-8">
@@ -137,31 +137,31 @@ export default function TrendsPage() {
           </div>
           <div className="p-6">
             <div className="flex space-x-4">
-              <button
-                onClick={() => setSeriesType('health')}
+                <button
+                  onClick={() => setSeriesType('health')}
                 className={`px-4 py-2 rounded-md text-sm font-medium ${
-                  seriesType === 'health'
+                    seriesType === 'health'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
+                  }`}
+                >
                 Health Breakdown
-              </button>
-              <button
-                onClick={() => setSeriesType('status')}
+                </button>
+                <button
+                  onClick={() => setSeriesType('status')}
                 className={`px-4 py-2 rounded-md text-sm font-medium ${
-                  seriesType === 'status'
+                    seriesType === 'status'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
+                  }`}
+                >
                 Status Breakdown
-              </button>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Chart */}
+          {/* Chart */}
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-medium text-gray-900">

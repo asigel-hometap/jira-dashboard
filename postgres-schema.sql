@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS issues (
   assignee_id VARCHAR(255),
   health VARCHAR(255),
   health_id VARCHAR(255),
+  discovery_complexity VARCHAR(255),
+  discovery_complexity_id VARCHAR(255),
   created TIMESTAMP NOT NULL,
   updated TIMESTAMP NOT NULL,
   duedate TIMESTAMP,

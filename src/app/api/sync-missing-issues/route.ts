@@ -39,6 +39,8 @@ export async function POST() {
             assigneeId: issue.fields.assignee?.accountId || null,
             health: issue.fields.customfield_10238?.value || null,
             healthId: issue.fields.customfield_10238?.id || null,
+            discoveryComplexity: issue.fields.customfield_11081?.value || null,
+            discoveryComplexityId: issue.fields.customfield_11081?.id || null,
             created: new Date(issue.fields.created),
             updated: new Date(issue.fields.updated),
             duedate: issue.fields.duedate ? new Date(issue.fields.duedate) : null,

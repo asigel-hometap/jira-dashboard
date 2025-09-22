@@ -332,10 +332,11 @@ const GanttChart: React.FC<GanttChartProps> = ({ data, height = 400, showInactiv
                         {project.inactivePeriods.map((period, periodIndex) => (
                           <div
                             key={periodIndex}
-                            className="absolute top-0 h-6 bg-gray-500 opacity-60 rounded-sm"
+                            className="absolute top-0 h-6 rounded-sm border-2 border-dashed border-red-400 bg-red-100 opacity-80"
                             style={{
                               left: `${period.leftPercent}%`,
-                              width: `${period.widthPercent}%`
+                              width: `${period.widthPercent}%`,
+                              zIndex: 5
                             }}
                             title={`Inactive period: ${format(period.start, 'MMM dd')} - ${format(period.end, 'MMM dd')}`}
                           />

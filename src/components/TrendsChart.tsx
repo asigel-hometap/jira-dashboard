@@ -45,6 +45,21 @@ const TrendsChart = React.memo(({ data, seriesType, loading }: TrendsChartProps)
       tooltip: {
         mode: 'index' as const,
         intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: '#fff',
+        bodyColor: '#fff',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderWidth: 1,
+        cornerRadius: 6,
+        displayColors: true,
+        titleFont: {
+          size: 14,
+          weight: 'bold' as const
+        },
+        bodyFont: {
+          size: 13
+        },
+        padding: 12,
         callbacks: {
           title: function(context: any) {
             return `Week: ${context[0].label}`;
@@ -52,7 +67,22 @@ const TrendsChart = React.memo(({ data, seriesType, loading }: TrendsChartProps)
           label: function(context: any) {
             const label = context.dataset.label || '';
             const value = context.parsed.y;
-            return `${label}: ${value} projects`;
+            
+            // Calculate total for percentage
+            const chart = context.chart;
+            const dataIndex = context.dataIndex;
+            const datasets = chart.data.datasets;
+            const total = datasets.reduce((sum: number, dataset: any) => {
+              return sum + (dataset.data[dataIndex] || 0);
+            }, 0);
+            
+            const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+            return `${label}: ${value} projects (${percentage}%)`;
+          },
+          footer: function(context: any) {
+            // Calculate total from all visible datasets
+            const total = context.reduce((sum: number, item: any) => sum + (item.parsed.y || 0), 0);
+            return `Total: ${total} projects`;
           }
         }
       },

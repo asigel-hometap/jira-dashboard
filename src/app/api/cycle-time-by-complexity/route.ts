@@ -45,11 +45,13 @@ export async function GET(request: NextRequest) {
         }
         
         const discoveryComplexity = issue?.discoveryComplexity || 'Not Set';
-        const cycleTime = timeType === 'active' 
-          ? (cached.activeDaysInDiscovery || 0)
-          : (cached.calendarDaysInDiscovery || 0);
+        const calendarDays = cached.calendarDaysInDiscovery || 0;
+        const activeDays = cached.activeDaysInDiscovery || 0;
+        const cycleTime = timeType === 'active' ? activeDays : calendarDays;
         
-        if (cycleTime > 0) {
+        // Only include projects with valid cycle time data for both calendar and active
+        // Both must have positive values, and active cannot exceed calendar
+        if (calendarDays > 0 && activeDays > 0 && activeDays <= calendarDays) {
           // Ensure the complexity group exists, fallback to 'Not Set' if unknown
           const complexityKey = complexityGroups[discoveryComplexity] ? discoveryComplexity : 'Not Set';
           complexityGroups[complexityKey].push(cycleTime);

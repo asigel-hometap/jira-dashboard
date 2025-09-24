@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
       headers.join(','),
       ...exportData.map(row => 
         headers.map(header => {
-          const value = row[header];
+          const value = (row as any)[header];
           // Escape CSV values that contain commas, quotes, or newlines
           if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
             return `"${value.replace(/"/g, '""')}"`;

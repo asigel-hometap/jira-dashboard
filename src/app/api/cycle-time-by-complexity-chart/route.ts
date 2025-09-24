@@ -52,7 +52,9 @@ export async function GET(request: NextRequest) {
           : (cached.calendarDaysInDiscovery || 0);
         
         if (cycleTime > 0) {
-          complexityGroups[discoveryComplexity].push(cycleTime);
+          // Ensure the complexity group exists, fallback to 'Not Set' if unknown
+          const complexityKey = complexityGroups[discoveryComplexity] ? discoveryComplexity : 'Not Set';
+          complexityGroups[complexityKey].push(cycleTime);
         }
       }
     }

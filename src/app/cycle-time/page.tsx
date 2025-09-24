@@ -232,7 +232,8 @@ export default function CycleTimePage() {
         return;
       }
       
-      const issueKeys = allIssuesResult.data.issueKeys;
+      const issueObjects = allIssuesResult.data.issueKeys;
+      const issueKeys = issueObjects.map((issue: any) => issue.key);
       console.log(`Refreshing ${issueKeys.length} issues from Jira...`);
 
       // Refresh all issues from Jira

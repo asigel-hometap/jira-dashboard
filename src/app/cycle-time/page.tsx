@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import BoxPlotChart from '@/components/BoxPlotChart';
+import ComplexityBoxPlotChart from '@/components/ComplexityBoxPlotChart';
 import { useCycleTimeContext } from '@/contexts/CycleTimeContext';
 
 interface CycleTimeCohort {
@@ -52,6 +53,8 @@ export default function CycleTimePage() {
   const [selectedComplexity, setSelectedComplexity] = useState<string | null>(null);
   const [complexityProjectDetails, setComplexityProjectDetails] = useState<ProjectDetail[]>([]);
   const [complexityDetailsLoading, setComplexityDetailsLoading] = useState(false);
+  const [complexityChartData, setComplexityChartData] = useState<any>(null);
+  const [complexityChartLoading, setComplexityChartLoading] = useState(false);
   const { activeTab, setActiveTab } = useCycleTimeContext();
 
   const fetchCycleTimeData = async () => {
@@ -91,9 +94,28 @@ export default function CycleTimePage() {
     }
   };
 
+  const fetchComplexityChartData = async () => {
+    try {
+      setComplexityChartLoading(true);
+      const response = await fetch(`/api/cycle-time-by-complexity-chart?timeType=${timeType}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setComplexityChartData(result.data);
+      } else {
+        console.error('Failed to fetch complexity chart data:', result.error);
+      }
+    } catch (err) {
+      console.error('Error fetching complexity chart data:', err);
+    } finally {
+      setComplexityChartLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchCycleTimeData();
     fetchComplexityData();
+    fetchComplexityChartData();
     fetchExcludedIssues();
   }, [timeType]);
 
@@ -242,6 +264,7 @@ export default function CycleTimePage() {
         
         // Refresh the main complexity data to get updated counts
         await fetchComplexityData();
+        await fetchComplexityChartData();
         
         // Now fetch the updated project details
         if (selectedComplexity) {
@@ -413,6 +436,7 @@ export default function CycleTimePage() {
                 onClick={async () => {
                   await fetchCycleTimeData();
                   await fetchComplexityData();
+                  await fetchComplexityChartData();
                 }}
                 disabled={loading || complexityLoading}
                 className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
@@ -743,6 +767,18 @@ export default function CycleTimePage() {
               </div>
             ) : complexityData ? (
               <div className="p-6">
+                {/* Boxplot Chart */}
+                {complexityChartLoading ? (
+                  <div className="mb-6 p-8 text-center text-gray-500">
+                    <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin mx-auto mb-2"></div>
+                    Loading complexity chart...
+                  </div>
+                ) : complexityChartData ? (
+                  <div className="mb-6">
+                    <ComplexityBoxPlotChart data={complexityChartData} unit={unit} />
+                  </div>
+                ) : null}
+                
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {Object.entries(complexityData.complexityGroups).map(([complexity, group]: [string, any]) => (
                     <div 

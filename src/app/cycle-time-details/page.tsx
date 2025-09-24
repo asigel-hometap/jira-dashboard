@@ -38,6 +38,7 @@ export default function CycleTimeDetailsPage() {
     start: string;
     end: string;
   }>({ start: '', end: '' });
+  const [exportLoading, setExportLoading] = useState(false);
 
   // Get unique assignees for dropdown
   const uniqueAssignees = Array.from(new Set(discoveryDetails.map(detail => detail.assignee).filter(Boolean))).sort();
@@ -97,6 +98,38 @@ export default function CycleTimeDetailsPage() {
       setError('Network error refreshing from Jira');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const exportToCSV = async () => {
+    try {
+      setExportLoading(true);
+      
+      const response = await fetch('/api/export-cycle-time-details');
+      
+      if (!response.ok) {
+        throw new Error('Failed to export data');
+      }
+      
+      // Get the CSV content
+      const csvContent = await response.text();
+      
+      // Create a blob and download it
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `discovery-cycle-times-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('Error exporting to CSV:', error);
+      alert('Failed to export data. Please try again.');
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -397,6 +430,13 @@ export default function CycleTimeDetailsPage() {
               <div className="text-sm text-gray-500">
                 Showing {filteredDetails.length} of {discoveryDetails.length} projects
               </div>
+              <button
+                onClick={exportToCSV}
+                disabled={exportLoading}
+                className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50"
+              >
+                {exportLoading ? 'Exporting...' : 'Export to CSV'}
+              </button>
               <button
                 onClick={refreshFromJira}
                 disabled={loading}

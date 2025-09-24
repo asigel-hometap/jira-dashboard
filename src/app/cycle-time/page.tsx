@@ -55,6 +55,7 @@ export default function CycleTimePage() {
   const [complexityDetailsLoading, setComplexityDetailsLoading] = useState(false);
   const [complexityChartData, setComplexityChartData] = useState<any>(null);
   const [complexityChartLoading, setComplexityChartLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const { activeTab, setActiveTab } = useCycleTimeContext();
 
   const fetchCycleTimeData = async () => {
@@ -401,6 +402,50 @@ export default function CycleTimePage() {
     );
   }
 
+  const exportToCSV = async () => {
+    try {
+      setExportLoading(true);
+      
+      let exportUrl = '/api/export-cycle-time-details?';
+      const params = new URLSearchParams();
+      
+      if (activeTab === 'quarter' && selectedQuarter) {
+        // For quarter tab, export only the selected quarter
+        params.append('quarter', selectedQuarter);
+      }
+      // For complexity tab, don't add complexity filter - export all projects
+      
+      params.append('timeType', timeType);
+      exportUrl += params.toString();
+      
+      const response = await fetch(exportUrl);
+      
+      if (!response.ok) {
+        throw new Error('Failed to export data');
+      }
+      
+      // Get the CSV content
+      const csvContent = await response.text();
+      
+      // Create a blob and download it
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `discovery-cycle-times-${activeTab === 'quarter' ? `quarter-${selectedQuarter}` : 'all-complexities'}-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('Error exporting to CSV:', error);
+      alert('Failed to export data. Please try again.');
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   const displayData = unit === 'weeks' ? convertToWeeks(cycleTimeData) : cycleTimeData;
   const totalProjects = Object.values(cycleTimeData.cohorts).reduce((sum, cohort) => sum + cohort.size, 0);
 
@@ -433,6 +478,13 @@ export default function CycleTimePage() {
               <div className="text-sm text-gray-500">
                 Total projects: {totalProjects}
               </div>
+              <button
+                onClick={exportToCSV}
+                disabled={exportLoading || (activeTab === 'quarter' && !selectedQuarter)}
+                className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50"
+              >
+                {exportLoading ? 'Exporting...' : activeTab === 'quarter' ? 'Export Quarter to CSV' : 'Export All to CSV'}
+              </button>
               <button
                 onClick={async () => {
                   await fetchCycleTimeData();

@@ -197,20 +197,23 @@ export default function CycleTimePage() {
   };
 
   const refreshComplexityFromJira = async () => {
-    if (!selectedComplexity) return;
-    
     try {
       setComplexityDetailsLoading(true);
+      setComplexityLoading(true);
       
-      // Get all issue keys from current data
-      const issueKeys = complexityProjectDetails.map(project => project.key);
+      // Get all active issues from the database to refresh
+      const allIssuesResponse = await fetch('/api/get-all-issue-keys');
+      const allIssuesResult = await allIssuesResponse.json();
       
-      if (issueKeys.length === 0) {
-        console.log('No issues to refresh');
+      if (!allIssuesResult.success) {
+        console.error('Failed to get issue keys:', allIssuesResult.error);
         return;
       }
+      
+      const issueKeys = allIssuesResult.data.issueKeys;
+      console.log(`Refreshing ${issueKeys.length} issues from Jira...`);
 
-      // Refresh specific issues from Jira
+      // Refresh all issues from Jira
       const refreshResponse = await fetch('/api/refresh-specific-issues', {
         method: 'POST',
         headers: {
@@ -224,8 +227,26 @@ export default function CycleTimePage() {
       if (refreshResult.success) {
         console.log(`Refreshed ${refreshResult.data.refreshedIssues.length} issues from Jira`);
         
-        // Now fetch the updated data from database
-        await fetchComplexityProjectDetails(selectedComplexity);
+        // Recalculate cycle time cache for the refreshed issues
+        const recalcResponse = await fetch('/api/recalculate-cycle-cache', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ issueKeys }),
+        });
+        
+        if (recalcResponse.ok) {
+          console.log('Recalculated cycle time cache for refreshed issues');
+        }
+        
+        // Refresh the main complexity data to get updated counts
+        await fetchComplexityData();
+        
+        // Now fetch the updated project details
+        if (selectedComplexity) {
+          await fetchComplexityProjectDetails(selectedComplexity);
+        }
       } else {
         console.error('Failed to refresh from Jira:', refreshResult.error);
       }
@@ -233,6 +254,7 @@ export default function CycleTimePage() {
       console.error('Error refreshing from Jira:', err);
     } finally {
       setComplexityDetailsLoading(false);
+      setComplexityLoading(false);
     }
   };
 
@@ -388,11 +410,14 @@ export default function CycleTimePage() {
                 Total projects: {totalProjects}
               </div>
               <button
-                onClick={fetchCycleTimeData}
-                disabled={loading}
+                onClick={async () => {
+                  await fetchCycleTimeData();
+                  await fetchComplexityData();
+                }}
+                disabled={loading || complexityLoading}
                 className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
               >
-                {loading ? 'Refreshing...' : 'Refresh Data'}
+                {(loading || complexityLoading) ? 'Refreshing...' : 'Refresh Data'}
               </button>
             </div>
           </div>
@@ -816,10 +841,20 @@ export default function CycleTimePage() {
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={refreshComplexityFromJira}
-                        disabled={complexityDetailsLoading}
-                        className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+                        disabled={complexityDetailsLoading || complexityLoading}
+                        className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 flex items-center gap-2"
                       >
-                        {complexityDetailsLoading ? 'Refreshing...' : 'Refresh from Jira'}
+                        {(complexityDetailsLoading || complexityLoading) ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Syncing from Jira...
+                          </>
+                        ) : (
+                          'Refresh from Jira'
+                        )}
                       </button>
                       <button
                         onClick={() => setSelectedComplexity(null)}
@@ -833,7 +868,16 @@ export default function CycleTimePage() {
                 
                 {complexityDetailsLoading ? (
                   <div className="p-4 text-center text-gray-500">
-                    Loading project details...
+                    <div className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Syncing from Jira and updating data...
+                    </div>
+                    <p className="text-sm text-gray-400 mt-2">
+                      This may take up to a minute for large datasets
+                    </p>
                   </div>
                 ) : complexityProjectDetails.length === 0 ? (
                   <div className="p-4 text-center text-gray-500">

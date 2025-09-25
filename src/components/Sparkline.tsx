@@ -5,8 +5,10 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 
 interface SparklineProps {
   data: number[];
+  activeData?: number[];
   height?: number;
   color?: string;
+  activeColor?: string;
   strokeWidth?: number;
   className?: string;
   dates?: string[];
@@ -20,7 +22,11 @@ const CustomTooltip = React.memo(({ active, payload, label }: any) => {
     return (
       <div className="bg-white p-2 border border-gray-200 rounded shadow-lg text-xs">
         <p className="font-medium text-gray-900">{`Date: ${label}`}</p>
-        <p className="text-blue-600">{`Projects: ${payload[0].value}`}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className={entry.dataKey === 'activeValue' ? 'text-green-600' : 'text-blue-600'}>
+            {entry.dataKey === 'activeValue' ? 'Active' : 'Total'}: {entry.value}
+          </p>
+        ))}
       </div>
     );
   }
@@ -47,8 +53,10 @@ CustomDot.displayName = 'CustomDot';
 
 const Sparkline = React.memo(({ 
   data, 
+  activeData,
   height = 30, 
   color = '#3B82F6',
+  activeColor = '#10B981',
   strokeWidth = 2,
   className = '',
   dates = [],
@@ -62,10 +70,11 @@ const Sparkline = React.memo(({
     }
     return data.map((value, index) => ({
       value,
+      activeValue: activeData ? activeData[index] : undefined,
       date: dates[index] || `Week ${index + 1}`,
       index
     }));
-  }, [data, dates]);
+  }, [data, activeData, dates]);
 
   if (!data || data.length === 0) {
     return (
@@ -106,6 +115,17 @@ const Sparkline = React.memo(({
             activeDot={{ r: 4, fill: color, stroke: 'white', strokeWidth: 2 }}
             connectNulls={false}
           />
+          {activeData && (
+            <Line
+              type="monotone"
+              dataKey="activeValue"
+              stroke={activeColor}
+              strokeWidth={strokeWidth}
+              dot={<CustomDot fill={activeColor} />}
+              activeDot={{ r: 4, fill: activeColor, stroke: 'white', strokeWidth: 2 }}
+              connectNulls={false}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>

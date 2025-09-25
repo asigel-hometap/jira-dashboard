@@ -100,20 +100,28 @@ export function useTrendsData() {
     teamMemberNames.forEach((teamMember) => {
       const key = nameMap[teamMember];
       if (!key) {
-        map.set(teamMember, { data: [], dates: [] });
+        map.set(teamMember, { data: [], activeData: [], dates: [] });
         return;
       }
       
       const data = trendsData[key as keyof typeof trendsData];
+      const activeData = trendsData[`${key}_active` as keyof typeof trendsData];
       const dates = trendsData.dates || [];
       
       if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'number') {
         const filteredData = data as number[];
+        const filteredActiveData = Array.isArray(activeData) && activeData.length > 0 && typeof activeData[0] === 'number' 
+          ? activeData as number[] 
+          : filteredData; // Fallback to total data if active data not available
         const filteredDates = dates as unknown as string[];
         
-        map.set(teamMember, { data: filteredData, dates: filteredDates });
+        map.set(teamMember, { 
+          data: filteredData, 
+          activeData: filteredActiveData,
+          dates: filteredDates 
+        });
       } else {
-        map.set(teamMember, { data: [], dates: [] });
+        map.set(teamMember, { data: [], activeData: [], dates: [] });
       }
     });
     

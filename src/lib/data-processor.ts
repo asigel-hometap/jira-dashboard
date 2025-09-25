@@ -505,6 +505,76 @@ export class DataProcessor {
     return breakdown;
   }
 
+  // Get health breakdown for a specific team member at a historical date
+  async getActiveHealthBreakdownForTeamMemberAtDate(teamMemberName: string, targetDate: Date): Promise<{
+    onTrack: number;
+    atRisk: number;
+    offTrack: number;
+    onHold: number;
+    mystery: number;
+    complete: number;
+    unknown: number;
+  }> {
+    const dbService = getDatabaseService();
+    const issues = await dbService.getActiveIssues();
+    
+    // Filter issues by assignee
+    const memberIssues = issues.filter(issue => issue.assignee === teamMemberName);
+    
+    const breakdown = {
+      onTrack: 0,
+      atRisk: 0,
+      offTrack: 0,
+      onHold: 0,
+      mystery: 0,
+      complete: 0,
+      unknown: 0
+    };
+
+    // For each issue, determine its health status at the target date
+    for (const issue of memberIssues) {
+      try {
+        const projectState = await this.getProjectStateAtDate(issue, targetDate);
+        
+        if (projectState) {
+          // Check if project was active at this date (not in inactive statuses)
+          const isActive = !INACTIVE_STATUSES.includes(projectState.status);
+          
+          if (isActive) {
+            switch (projectState.health) {
+              case 'On Track':
+                breakdown.onTrack++;
+                break;
+              case 'At Risk':
+                breakdown.atRisk++;
+                break;
+              case 'Off Track':
+                breakdown.offTrack++;
+                break;
+              case 'On Hold':
+                breakdown.onHold++;
+                break;
+              case 'Mystery':
+                breakdown.mystery++;
+                break;
+              case 'Complete':
+                breakdown.complete++;
+                break;
+              default:
+                breakdown.unknown++;
+                break;
+            }
+          }
+        }
+      } catch (error) {
+        console.warn(`Error getting state for ${issue.key} at ${targetDate.toISOString()}:`, error);
+        breakdown.unknown++;
+      }
+    }
+
+    return breakdown;
+  }
+
   // Calculate weeks at risk for an issue based on changelog data
   async calculateWeeksAtRisk(issueKey: string): Promise<number> {
     try {

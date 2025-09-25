@@ -7,13 +7,15 @@ export async function GET(request: NextRequest) {
     // Initialize database if not already done
     await initializeDatabase();
     
-    // Get historical capacity data
+    const dataProcessor = getDataProcessor();
+    
+    // Get historical capacity data from CSV (starting from 2/10/2025)
     const capacityData = await getDatabaseService().getCapacityData();
     
     // Find the cutoff date (last historical data point)
     const lastHistoricalDate = capacityData.length > 0 
       ? capacityData[capacityData.length - 1].date 
-      : new Date('2025-09-08');
+      : new Date('2025-02-10');
     
     console.log(`Last historical data point: ${lastHistoricalDate.toISOString().split('T')[0]}`);
     
@@ -24,9 +26,8 @@ export async function GET(request: NextRequest) {
     
     console.log(`Days since last historical data: ${daysDiff}, Weeks of real-time data needed: ${weeksNeeded}`);
     
-    // Generate real-time data for missing weeks
+    // Generate real-time data for missing weeks (only completed weeks)
     const realTimeData = [];
-    const dataProcessor = getDataProcessor();
     
     // Team member mapping
     const teamMemberMap = {
@@ -62,6 +63,13 @@ export async function GET(request: NextRequest) {
         garima: 0,
         lizzy: 0,
         sanela: 0,
+        adam_active: 0,
+        jennie_active: 0,
+        jacqueline_active: 0,
+        robert_active: 0,
+        garima_active: 0,
+        lizzy_active: 0,
+        sanela_active: 0,
         total: 0,
         notes: 'Real-time Jira data',
         dataSource: 'realtime'
@@ -71,16 +79,23 @@ export async function GET(request: NextRequest) {
       for (const [fullName, shortName] of Object.entries(teamMemberMap)) {
         try {
           const healthBreakdown = await dataProcessor.getActiveHealthBreakdownForTeamMember(fullName);
-          const activeProjectCount = healthBreakdown.onTrack + healthBreakdown.atRisk + 
+          const totalProjectCount = healthBreakdown.onTrack + healthBreakdown.atRisk + 
                                    healthBreakdown.offTrack + healthBreakdown.onHold + 
                                    healthBreakdown.mystery + healthBreakdown.complete + 
                                    healthBreakdown.unknown;
           
-          weekData[shortName] = activeProjectCount;
-          weekData.total += activeProjectCount;
+          // Active projects (excluding complete)
+          const activeProjectCount = healthBreakdown.onTrack + healthBreakdown.atRisk + 
+                                   healthBreakdown.offTrack + healthBreakdown.onHold + 
+                                   healthBreakdown.mystery + healthBreakdown.unknown;
+          
+          weekData[shortName] = totalProjectCount;
+          weekData[`${shortName}_active`] = activeProjectCount;
+          weekData.total += totalProjectCount;
         } catch (error) {
           console.warn(`Error calculating workload for ${fullName}:`, error);
           weekData[shortName] = 0;
+          weekData[`${shortName}_active`] = 0;
         }
       }
       
@@ -95,13 +110,22 @@ export async function GET(request: NextRequest) {
     
     // Transform data for sparklines
     const trendsData = {
-      adam: allData.map(d => d.adam),
-      jennie: allData.map(d => d.jennie),
-      jacqueline: allData.map(d => d.jacqueline),
-      robert: allData.map(d => d.robert),
-      garima: allData.map(d => d.garima),
-      lizzy: allData.map(d => d.lizzy),
-      sanela: allData.map(d => d.sanela),
+      // Total projects (including complete)
+      adam: allData.map(d => d.adam || 0),
+      jennie: allData.map(d => d.jennie || 0),
+      jacqueline: allData.map(d => d.jacqueline || 0),
+      robert: allData.map(d => d.robert || 0),
+      garima: allData.map(d => d.garima || 0),
+      lizzy: allData.map(d => d.lizzy || 0),
+      sanela: allData.map(d => d.sanela || 0),
+      // Active projects (excluding complete) - for historical data, assume same as total
+      adam_active: allData.map(d => d.adam_active || d.adam || 0),
+      jennie_active: allData.map(d => d.jennie_active || d.jennie || 0),
+      jacqueline_active: allData.map(d => d.jacqueline_active || d.jacqueline || 0),
+      robert_active: allData.map(d => d.robert_active || d.robert || 0),
+      garima_active: allData.map(d => d.garima_active || d.garima || 0),
+      lizzy_active: allData.map(d => d.lizzy_active || d.lizzy || 0),
+      sanela_active: allData.map(d => d.sanela_active || d.sanela || 0),
       dates: allData.map(d => d.date.toISOString().split('T')[0]),
       dataSource: allData.map(d => d.dataSource || 'historical'),
       totalDataPoints: allData.length,

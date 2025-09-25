@@ -5,7 +5,7 @@ import HealthBadges from './HealthBadges';
 
 interface WorkloadCardProps {
   member: WorkloadData;
-  trendData: { data: number[]; dates: string[] };
+  trendData: { data: number[]; activeData: number[]; dates: string[] };
   globalMaxProjects: number;
 }
 
@@ -57,13 +57,25 @@ const WorkloadCard = React.memo(({ member, trendData, globalMaxProjects }: Workl
         <div className="flex-1 max-w-2xl">
           <div className="flex items-center justify-between mb-2 pr-2">
             <div className="text-xs text-gray-500">Workload Trend</div>
+            <div className="flex items-center gap-3 text-xs">
+              <div className="flex items-center gap-1">
+                <div className={`w-2 h-2 rounded-full ${member.isOverloaded ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                <span className="text-gray-600">Total</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className={`w-2 h-2 rounded-full ${member.isOverloaded ? 'bg-orange-500' : 'bg-green-500'}`}></div>
+                <span className="text-gray-600">Active</span>
+              </div>
+            </div>
           </div>
           <div className="bg-gray-50 rounded-lg p-3">
             <Sparkline
               data={trendData.data}
+              activeData={trendData.activeData}
               dates={trendData.dates}
               height={120}
               color={member.isOverloaded ? '#EF4444' : '#3B82F6'}
+              activeColor={member.isOverloaded ? '#F97316' : '#10B981'}
               strokeWidth={2}
               showTooltip={true}
               globalMaxProjects={globalMaxProjects}

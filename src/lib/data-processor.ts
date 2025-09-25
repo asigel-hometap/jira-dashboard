@@ -538,7 +538,7 @@ export class DataProcessor {
         
         if (projectState) {
           // Check if project was active at this date (not in inactive statuses)
-          const isActive = !INACTIVE_STATUSES.includes(projectState.status);
+          const isActive = !INACTIVE_STATUSES.includes(projectState.status as any);
           
           if (isActive) {
             switch (projectState.health) {

@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
     console.error('Error getting cache status:', error);
     return NextResponse.json({
       success: false,
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error',
       data: {
         status: { level: 'error', color: 'red', overallScore: 0 },
         sync: { score: 0, totalJiraIssues: 0, totalDbIssues: 0, missingFromDb: 0, extraInDb: 0, cacheProgress: 0 },

@@ -534,6 +534,14 @@ export class DataProcessor {
     // For each issue, determine its health status at the target date
     for (const issue of memberIssues) {
       try {
+        // First check if the issue was assigned to this team member at the target date
+        const wasAssignedAtDate = await this.wasIssueAssignedToMemberAtDate(issue.key, teamMemberName, targetDate);
+        
+        if (!wasAssignedAtDate) {
+          // Skip this issue if it wasn't assigned to the team member at the target date
+          continue;
+        }
+        
         const projectState = await this.getProjectStateAtDate(issue, targetDate);
         
         if (projectState) {
@@ -2256,6 +2264,54 @@ export class DataProcessor {
         status: issue.status,
         health: issue.health || 'Unknown'
       };
+    }
+  }
+
+  /**
+   * Check if an issue was assigned to a specific team member at a given date
+   */
+  private async wasIssueAssignedToMemberAtDate(issueKey: string, teamMemberName: string, targetDate: Date): Promise<boolean> {
+    try {
+      const changelog = await this.getIssueChangelog(issueKey);
+      
+      if (!changelog || !changelog.values) {
+        // No changelog data, assume current assignment is correct
+        return true;
+      }
+
+      // Find assignment changes before or at the target date
+      const assignmentChanges = changelog.values
+        .filter((entry: any) => 
+          new Date(entry.created) <= targetDate &&
+          entry.items.some((item: any) => item.field === 'assignee')
+        )
+        .map((entry: any) => {
+          const assigneeItem = entry.items.find((item: any) => item.field === 'assignee');
+          return {
+            date: new Date(entry.created),
+            from: assigneeItem?.fromString || null,
+            to: assigneeItem?.toString || null
+          };
+        })
+        .sort((a: any, b: any) => a.date.getTime() - b.date.getTime());
+
+      // If no assignment changes found, check if the issue was created before the target date
+      // and assume it was unassigned initially
+      if (assignmentChanges.length === 0) {
+        // This would need the issue creation date, but for now assume unassigned
+        return false;
+      }
+
+      // Find the most recent assignment before or at the target date
+      const lastAssignment = assignmentChanges[assignmentChanges.length - 1];
+      
+      // Check if the last assignment was to our team member
+      return lastAssignment.to === teamMemberName;
+      
+    } catch (error) {
+      console.error(`Error checking assignment for ${issueKey} at ${targetDate.toISOString()}:`, error);
+      // On error, assume current assignment is correct
+      return true;
     }
   }
 

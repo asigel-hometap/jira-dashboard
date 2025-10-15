@@ -10,10 +10,19 @@ interface WorkloadCardProps {
 }
 
 const WorkloadCard = React.memo(({ member, trendData, globalMaxProjects }: WorkloadCardProps) => {
+  // Calculate active project count from health breakdown to ensure consistency
+  const activeProjectCount = member.healthBreakdown.onTrack + 
+                            member.healthBreakdown.atRisk + 
+                            member.healthBreakdown.offTrack + 
+                            member.healthBreakdown.onHold + 
+                            member.healthBreakdown.mystery + 
+                            member.healthBreakdown.unknown;
+  const isOverloaded = activeProjectCount >= 6;
+  
   return (
     <div
       className={`relative bg-white p-6 rounded-lg border-2 ${
-        member.isOverloaded 
+        isOverloaded 
           ? 'border-red-200 bg-red-50' 
           : 'border-gray-200'
       }`}
@@ -34,14 +43,14 @@ const WorkloadCard = React.memo(({ member, trendData, globalMaxProjects }: Workl
                 <h3 className="text-sm font-medium text-gray-900">
                   {member.teamMember}
                 </h3>
-                {member.isOverloaded && (
+                {isOverloaded && (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                     Overloaded
                   </span>
                 )}
               </div>
               <p className="text-2xl font-semibold text-gray-900">
-                {member.activeProjectCount}
+                {activeProjectCount}
               </p>
               <p className="text-sm text-gray-500">active projects</p>
             </div>
@@ -59,11 +68,11 @@ const WorkloadCard = React.memo(({ member, trendData, globalMaxProjects }: Workl
             <div className="text-xs text-gray-500">Workload Trend</div>
             <div className="flex items-center gap-3 text-xs">
               <div className="flex items-center gap-1">
-                <div className={`w-2 h-2 rounded-full ${member.isOverloaded ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                <div className={`w-2 h-2 rounded-full ${isOverloaded ? 'bg-red-500' : 'bg-blue-500'}`}></div>
                 <span className="text-gray-600">Total</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className={`w-2 h-2 rounded-full ${member.isOverloaded ? 'bg-orange-500' : 'bg-green-500'}`}></div>
+                <div className={`w-2 h-2 rounded-full ${isOverloaded ? 'bg-orange-500' : 'bg-green-500'}`}></div>
                 <span className="text-gray-600">Active</span>
               </div>
             </div>
@@ -74,8 +83,8 @@ const WorkloadCard = React.memo(({ member, trendData, globalMaxProjects }: Workl
               activeData={trendData.activeData}
               dates={trendData.dates}
               height={120}
-              color={member.isOverloaded ? '#EF4444' : '#3B82F6'}
-              activeColor={member.isOverloaded ? '#F97316' : '#10B981'}
+              color={isOverloaded ? '#EF4444' : '#3B82F6'}
+              activeColor={isOverloaded ? '#F97316' : '#10B981'}
               strokeWidth={2}
               showTooltip={true}
               globalMaxProjects={globalMaxProjects}

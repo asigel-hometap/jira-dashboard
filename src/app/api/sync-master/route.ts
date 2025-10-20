@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
       daily: null,
       weekly: null,
       status: null,
-      errors: []
+      errors: [] as Array<{ step: string; error: string }>
     };
     
     // Run daily sync first

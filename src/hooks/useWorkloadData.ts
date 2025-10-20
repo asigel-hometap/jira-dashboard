@@ -10,7 +10,8 @@ export function useWorkloadData() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('/api/workload');
+      // Use the new live API endpoint that fetches data directly from Jira
+      const response = await fetch('/api/workload-live');
       const result = await response.json();
       
       if (result.success) {

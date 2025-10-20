@@ -41,6 +41,7 @@ export interface JiraIssue {
     status: JiraStatus;
     assignee: JiraUser | null;
     customfield_10238: JiraHealth | null; // Health field
+    customfield_10454: boolean | null; // Idea archived
     customfield_10456: string | null; // Idea archived on
     customfield_10150: JiraUser[] | null; // Business champion (array)
     customfield_11081: JiraDiscoveryComplexity | null; // Discovery Complexity field

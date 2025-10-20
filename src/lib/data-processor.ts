@@ -446,7 +446,7 @@ export class DataProcessor {
     return breakdown;
   }
 
-  // Get ACTIVE health breakdown for a specific team member (excludes Complete projects in Live status)
+  // Get ACTIVE health breakdown for a specific team member using live Jira data (excludes archived and Complete projects in Live status)
   async getActiveHealthBreakdownForTeamMember(teamMemberName: string): Promise<{
     onTrack: number;
     atRisk: number;
@@ -456,13 +456,37 @@ export class DataProcessor {
     complete: number;
     unknown: number;
   }> {
-    const dbService = getDatabaseService();
-    const issues = await dbService.getActiveIssues();
+    // Use live Jira data instead of database data
+    const { getAllIssuesForCycleAnalysis } = await import('@/lib/jira-api');
+    const jiraIssues = await getAllIssuesForCycleAnalysis();
+    
+    // Filter for active projects (discovery, build, beta statuses) and exclude archived projects
+    const activeProjects = jiraIssues.filter(issue => {
+      const status = issue.fields.status.name;
+      const isArchived = issue.fields.customfield_10454; // "Idea archived" field
+      const archivedOn = issue.fields.customfield_10456; // "Idea archived on" field
+      
+      // Exclude if archived
+      if (isArchived || archivedOn) {
+        return false;
+      }
+      
+      // Include only discovery, build, beta statuses
+      return status === '02 Generative Discovery' ||
+             status === '04 Problem Discovery' ||
+             status === '05 Solution Discovery' ||
+             status === '06 Build' ||
+             status === '07 Beta';
+    });
     
     // Filter issues by assignee and exclude Complete projects only if they're in Live status (08+)
-    const memberIssues = issues.filter(issue => 
-      issue.assignee === teamMemberName && !(issue.health === 'Complete' && issue.status.startsWith('08'))
-    );
+    const memberIssues = activeProjects.filter(issue => {
+      const assignee = issue.fields.assignee?.displayName;
+      const health = issue.fields.customfield_10238?.value;
+      const status = issue.fields.status.name;
+      
+      return assignee === teamMemberName && !(health === 'Complete' && status.startsWith('08'));
+    });
     
     const breakdown = {
       onTrack: 0,
@@ -475,7 +499,8 @@ export class DataProcessor {
     };
 
     for (const issue of memberIssues) {
-      switch (issue.health) {
+      const health = issue.fields.customfield_10238?.value;
+      switch (health) {
         case 'On Track':
           breakdown.onTrack++;
           break;
@@ -515,11 +540,34 @@ export class DataProcessor {
     complete: number;
     unknown: number;
   }> {
-    const dbService = getDatabaseService();
-    const issues = await dbService.getActiveIssues();
+    // Use live Jira data instead of database data for consistency
+    const { getAllIssuesForCycleAnalysis } = await import('@/lib/jira-api');
+    const jiraIssues = await getAllIssuesForCycleAnalysis();
+    
+    // Filter for active projects (discovery, build, beta statuses) and exclude archived projects
+    const activeProjects = jiraIssues.filter(issue => {
+      const status = issue.fields.status.name;
+      const isArchived = issue.fields.customfield_10454; // "Idea archived" field
+      const archivedOn = issue.fields.customfield_10456; // "Idea archived on" field
+      
+      // Exclude if archived
+      if (isArchived || archivedOn) {
+        return false;
+      }
+      
+      // Include only discovery, build, beta statuses
+      return status === '02 Generative Discovery' ||
+             status === '04 Problem Discovery' ||
+             status === '05 Solution Discovery' ||
+             status === '06 Build' ||
+             status === '07 Beta';
+    });
     
     // Filter issues by assignee
-    const memberIssues = issues.filter(issue => issue.assignee === teamMemberName);
+    const memberIssues = activeProjects.filter(issue => {
+      const assignee = issue.fields.assignee?.displayName;
+      return assignee === teamMemberName;
+    });
     
     const breakdown = {
       onTrack: 0,

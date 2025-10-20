@@ -77,6 +77,15 @@ The app currently uses SQLite which won't work in production. You have two optio
 - **Database Issues**: Ensure database connection is properly configured
 - **CORS Issues**: Check API endpoint configurations
 
+## Data Flow Documentation
+
+For detailed information about how data flows through the system, see [DATA_FLOW.md](./DATA_FLOW.md). This document covers:
+- Data sources and consistency strategy
+- API endpoint purposes and data sources
+- Filtering logic for active vs archived projects
+- Troubleshooting data inconsistencies
+- Weekly snapshot process
+
 ## Next Steps
 
 After successful deployment:
@@ -84,3 +93,4 @@ After successful deployment:
 2. Gather feedback
 3. Iterate based on user needs
 4. Consider adding authentication for security
+5. Set up automated weekly snapshots for historical data

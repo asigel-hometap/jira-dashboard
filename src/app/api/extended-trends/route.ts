@@ -113,44 +113,48 @@ export async function GET(request: NextRequest) {
     // Sort by date to ensure proper order
     allData.sort((a, b) => a.date.getTime() - b.date.getTime());
     
-    // For the most recent 3 weeks, use current data to ensure accuracy
-    // This compensates for historical calculation issues
-    const weeksToUpdate = Math.min(3, allData.length);
+    // For the most recent week, use live Jira data to ensure accuracy
+    // For historical weeks, use stored capacity data
+    console.log(`Using stored capacity data for ${allData.length} weeks`);
     
-    for (let i = 0; i < weeksToUpdate; i++) {
-      const weekIndex = allData.length - 1 - i;
-      const week = allData[weekIndex];
-      const weekDate = week.date;
+    // Update the most recent week with live data if it exists
+    if (allData.length > 0) {
+      const mostRecentWeek = allData[allData.length - 1];
+      const today = new Date();
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
       
-      console.log(`Updating week ${i + 1} (${weekDate.toISOString().split('T')[0]}) with current data`);
-      
-      // Calculate current workload for each team member
-      for (const [fullName, shortName] of Object.entries(teamMemberMap)) {
-        try {
-          const healthBreakdown = await dataProcessor.getActiveHealthBreakdownForTeamMember(fullName);
-          
-          const totalProjectCount = healthBreakdown.onTrack + healthBreakdown.atRisk + 
-                                   healthBreakdown.offTrack + healthBreakdown.onHold + 
-                                   healthBreakdown.mystery + healthBreakdown.complete + 
-                                   healthBreakdown.unknown;
-          
-          // Active projects (excluding complete)
-          const activeProjectCount = healthBreakdown.onTrack + healthBreakdown.atRisk + 
-                                   healthBreakdown.offTrack + healthBreakdown.onHold + 
-                                   healthBreakdown.mystery + healthBreakdown.unknown;
-          
-          week[shortName] = totalProjectCount;
-          week[`${shortName}_active`] = activeProjectCount;
-        } catch (error) {
-          console.warn(`Error updating week ${i + 1} for ${fullName}:`, error);
+      // If the most recent data is within the last week, update it with live data
+      if (mostRecentWeek.date >= weekAgo) {
+        console.log(`Updating most recent week (${mostRecentWeek.date.toISOString().split('T')[0]}) with live Jira data`);
+        
+        // Calculate live data for the most recent week
+        for (const [fullName, shortName] of Object.entries(teamMemberMap)) {
+          try {
+            const healthBreakdown = await dataProcessor.getActiveHealthBreakdownForTeamMember(fullName);
+            
+            const totalProjectCount = healthBreakdown.onTrack + healthBreakdown.atRisk + 
+                                     healthBreakdown.offTrack + healthBreakdown.onHold + 
+                                     healthBreakdown.mystery + healthBreakdown.complete + 
+                                     healthBreakdown.unknown;
+            
+            // Active projects (excluding complete)
+            const activeProjectCount = healthBreakdown.onTrack + healthBreakdown.atRisk + 
+                                     healthBreakdown.offTrack + healthBreakdown.onHold + 
+                                     healthBreakdown.mystery + healthBreakdown.unknown;
+            
+            mostRecentWeek[shortName] = totalProjectCount;
+            mostRecentWeek[`${shortName}_active`] = activeProjectCount;
+          } catch (error) {
+            console.warn(`Error updating live data for ${fullName}:`, error);
+          }
         }
+        
+        // Recalculate total
+        mostRecentWeek.total = Object.values(teamMemberMap).reduce((sum, shortName) => 
+          sum + (mostRecentWeek[shortName] || 0), 0);
+        mostRecentWeek.notes = 'Live Jira data (updated)';
+        mostRecentWeek.dataSource = 'live-updated';
       }
-      
-      // Recalculate total
-      week.total = Object.values(teamMemberMap).reduce((sum, shortName) => 
-        sum + (week[shortName] || 0), 0);
-      week.notes = 'Current Jira data (updated)';
-      week.dataSource = 'current';
     }
     
     // Transform data for sparklines

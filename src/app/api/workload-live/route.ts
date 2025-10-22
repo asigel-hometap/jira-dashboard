@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
         console.log(`  - ${project.key}: ${project.fields.summary} | Status: ${status} | Health: ${health || 'null'}`);
       });
       
-      // Calculate health breakdown
+      // Calculate health breakdown and collect project details
       const healthBreakdown = {
         onTrack: 0,
         atRisk: 0,
@@ -83,29 +83,53 @@ export async function GET(request: NextRequest) {
         unknown: 0
       };
       
+      const projectDetails = {
+        onTrack: [] as any[],
+        atRisk: [] as any[],
+        offTrack: [] as any[],
+        onHold: [] as any[],
+        mystery: [] as any[],
+        complete: [] as any[],
+        unknown: [] as any[]
+      };
+      
       memberProjects.forEach(project => {
         const health = project.fields.customfield_10238?.value;
+        const projectDetail = {
+          key: project.key,
+          summary: project.fields.summary,
+          status: project.fields.status.name,
+          health: health
+        };
+        
         switch (health) {
           case 'On Track':
             healthBreakdown.onTrack++;
+            projectDetails.onTrack.push(projectDetail);
             break;
           case 'At Risk':
             healthBreakdown.atRisk++;
+            projectDetails.atRisk.push(projectDetail);
             break;
           case 'Off Track':
             healthBreakdown.offTrack++;
+            projectDetails.offTrack.push(projectDetail);
             break;
           case 'On Hold':
             healthBreakdown.onHold++;
+            projectDetails.onHold.push(projectDetail);
             break;
           case 'Mystery':
             healthBreakdown.mystery++;
+            projectDetails.mystery.push(projectDetail);
             break;
           case 'Complete':
             healthBreakdown.complete++;
+            projectDetails.complete.push(projectDetail);
             break;
           default:
             healthBreakdown.unknown++;
+            projectDetails.unknown.push(projectDetail);
             break;
         }
       });
@@ -123,6 +147,7 @@ export async function GET(request: NextRequest) {
         activeProjectCount,
         isOverloaded: activeProjectCount >= 6,
         healthBreakdown,
+        projectDetails,
         dataSource: 'live-jira' // Indicate this is live data
       };
     });

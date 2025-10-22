@@ -121,10 +121,10 @@ export async function GET(request: NextRequest) {
     if (allData.length > 0) {
       const mostRecentWeek = allData[allData.length - 1];
       const today = new Date();
-      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
       
-      // If the most recent data is within the last week, update it with live data
-      if (mostRecentWeek.date >= weekAgo) {
+      // Only update if the most recent data is from today or yesterday (very recent)
+      if (mostRecentWeek.date >= yesterday) {
         console.log(`Updating most recent week (${mostRecentWeek.date.toISOString().split('T')[0]}) with live Jira data`);
         
         // Calculate live data for the most recent week
@@ -176,6 +176,7 @@ export async function GET(request: NextRequest) {
       lizzy_active: allData.map(d => d.lizzy_active || d.lizzy || 0),
       sanela_active: allData.map(d => d.sanela_active || d.sanela || 0),
       dates: allData.map(d => d.date.toISOString().split('T')[0]),
+      total: allData.map(d => d.total || 0),
       dataSource: allData.map(d => d.dataSource || 'historical'),
       totalDataPoints: allData.length,
       historicalDataPoints: capacityData.length,

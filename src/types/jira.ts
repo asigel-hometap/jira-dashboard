@@ -161,6 +161,13 @@ export interface CapacityData {
 }
 
 // Dashboard specific types
+export interface ProjectDetail {
+  key: string;
+  summary: string;
+  status: string;
+  health: string | null;
+}
+
 export interface WorkloadData {
   teamMember: string;
   activeProjectCount: number;
@@ -173,6 +180,15 @@ export interface WorkloadData {
     mystery: number;
     complete: number;
     unknown: number;
+  };
+  projectDetails: {
+    onTrack: ProjectDetail[];
+    atRisk: ProjectDetail[];
+    offTrack: ProjectDetail[];
+    onHold: ProjectDetail[];
+    mystery: ProjectDetail[];
+    complete: ProjectDetail[];
+    unknown: ProjectDetail[];
   };
 }
 

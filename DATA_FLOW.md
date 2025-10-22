@@ -53,7 +53,15 @@ Weekly Snapshots → Database Storage → Trends API
   - Current week: Live Jira data (updated in real-time)
 - **Used By**: Sparkline graphs
 
-### 4. `/api/debug-capacity`
+### 4. `/api/accurate-sparkline`
+- **Purpose**: Accurate historical sparkline data with proper week-over-week analysis
+- **Data Source**: 
+  - Pre-Sept 15, 2025: CSV data from `PM Capacity Tracking.csv`
+  - Sept 15+ 2025: Jira trends analysis with proper historical filtering
+- **Filtering**: Projects where health ≠ 'complete' AND status in (Generative Discovery, Problem Discovery, Solution Discovery, Build, Beta)
+- **Used By**: Main dashboard sparklines
+
+### 5. `/api/debug-capacity`
 - **Purpose**: Debug stored capacity data
 - **Data Source**: `capacity_data` table
 - **Used By**: Troubleshooting

@@ -5,6 +5,9 @@ A comprehensive dashboard for monitoring team workload, discovery cycle times, a
 ## Features
 
 - **Team Workload**: Monitor active project counts per team member with overload alerts (≥6 projects)
+  - **Accurate Sparklines**: Historical workload trends with proper week-over-week data
+  - **Data Sources**: CSV data (pre-Sept 15, 2025) + Jira trends analysis (Sept 15+)
+  - **Project Filtering**: Shows projects where health ≠ 'complete' AND status in (Generative Discovery, Problem Discovery, Solution Discovery, Build, Beta)
 - **Projects At Risk**: Identify projects with 2+ consecutive weeks at risk
 - **Trends Over Time**: Stacked bar charts showing project health and status trends
 - **Cycle Time Analysis**: Box-and-whisker plots for discovery cycle times by quarter
@@ -76,6 +79,8 @@ Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
 
 - `POST /api/init` - Initialize database and load data
 - `GET /api/workload` - Get team workload data
+- `GET /api/accurate-sparkline` - Get accurate historical sparkline data
+- `POST /api/accurate-sparkline` - Refresh sparkline data
 - `GET /api/projects-at-risk` - Get projects at risk
 - `GET /api/trends` - Get trend data
 - `GET /api/cycle-time` - Get cycle time analysis

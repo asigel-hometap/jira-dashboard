@@ -34,7 +34,9 @@ export async function GET(request: NextRequest) {
                             status === '06 Build' ||
                             status === '07 Beta';
       
-      const isActiveHealth = health !== 'Complete';
+      // Only include projects with specific health values (exclude null/undefined and 'Complete')
+      const isActiveHealth = health && health !== 'Complete' && 
+                            ['On Track', 'At Risk', 'Off Track', 'On Hold', 'Mystery'].includes(health);
       
       return isActiveStatus && isActiveHealth;
     });

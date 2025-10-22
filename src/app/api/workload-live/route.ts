@@ -15,9 +15,10 @@ export async function GET(request: NextRequest) {
     });
     console.log('Status distribution:', statusCounts);
     
-    // Filter for active projects (discovery, build, beta statuses) and exclude archived projects
+    // Filter for active projects using the same logic as accurate-sparkline
     const activeProjects = jiraIssues.filter(issue => {
       const status = issue.fields.status.name;
+      const health = issue.fields.customfield_10238?.value;
       const isArchived = issue.fields.customfield_10454; // "Idea archived" field
       const archivedOn = issue.fields.customfield_10456; // "Idea archived on" field
       
@@ -26,12 +27,16 @@ export async function GET(request: NextRequest) {
         return false;
       }
       
-      // Include only discovery, build, beta statuses
-      return status === '02 Generative Discovery' ||
-             status === '04 Problem Discovery' ||
-             status === '05 Solution Discovery' ||
-             status === '06 Build' ||
-             status === '07 Beta';
+      // Apply the same filtering criteria as accurate-sparkline: health !== 'complete' AND status in active statuses
+      const isActiveStatus = status === '02 Generative Discovery' ||
+                            status === '04 Problem Discovery' ||
+                            status === '05 Solution Discovery' ||
+                            status === '06 Build' ||
+                            status === '07 Beta';
+      
+      const isActiveHealth = health !== 'Complete';
+      
+      return isActiveStatus && isActiveHealth;
     });
     
     console.log(`Filtered to ${activeProjects.length} active projects`);

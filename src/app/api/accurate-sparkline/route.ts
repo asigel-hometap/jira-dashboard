@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { initializeDatabase, getDatabaseService } from '@/lib/database-factory';
+import { getDataProcessor } from '@/lib/data-processor';
 import { STATUSES, HEALTH_VALUES } from '@/types/jira';
 
 interface WeeklySnapshot {
@@ -262,18 +263,14 @@ async function getCurrentProjectCounts(db: any): Promise<Partial<WeeklySnapshot>
 
 async function getTrendsDataForDate(targetDate: Date): Promise<Partial<WeeklySnapshot> | null> {
   try {
-    // Get the existing trends data from the extended-trends API
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001'}/api/extended-trends`);
-    if (!response.ok) {
+    // Get trends data directly from data processor instead of API call
+    const dataProcessor = getDataProcessor();
+    const trendsData = await dataProcessor.getExtendedTrendsData();
+    
+    if (!trendsData || !trendsData.dates) {
       return null;
     }
     
-    const result = await response.json();
-    if (!result.success || !result.data) {
-      return null;
-    }
-    
-    const trendsData = result.data;
     const targetDateStr = targetDate.toISOString().split('T')[0];
     
     // Find the data point for the target date

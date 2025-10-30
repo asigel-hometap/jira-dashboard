@@ -15,6 +15,51 @@ interface ProjectAtRisk {
 }
 
 type SortField = 'assignee' | 'currentHealth' | 'currentStatus';
+
+// Risk History Tooltip Component
+function RiskHistoryTooltip({ 
+  riskHistoryDetails, 
+  isVisible, 
+  onMouseEnter, 
+  onMouseLeave 
+}: { 
+  riskHistoryDetails: Array<{date: string, health: string, emoji: string}>;
+  isVisible: boolean;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+}) {
+  if (!isVisible) return null;
+
+  // Sort entries by date in reverse chronological order (most recent first)
+  const sortedEntries = [...riskHistoryDetails].sort((a, b) => 
+    new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+
+  return (
+    <div 
+      className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-4 py-3 bg-gray-900 text-white text-sm rounded-lg shadow-lg max-w-sm"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      <div className="font-semibold mb-2 text-blue-300">Risk History Timeline</div>
+      <div className="space-y-2 max-h-64 overflow-y-auto">
+        {sortedEntries.map((entry, index) => (
+          <div key={index} className="flex items-center justify-between py-1 border-b border-gray-700 last:border-b-0">
+            <div className="flex items-center space-x-2">
+              <span className="text-lg">{entry.emoji}</span>
+              <span className="font-medium">{entry.health}</span>
+            </div>
+            <div className="text-xs text-gray-300 font-mono">
+              {new Date(entry.date).toLocaleDateString()}
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Arrow pointing down */}
+      <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+    </div>
+  );
+}
 type SortDirection = 'asc' | 'desc';
 
 export default function ProjectsAtRiskPage() {
@@ -24,6 +69,7 @@ export default function ProjectsAtRiskPage() {
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [hoveredRiskHistory, setHoveredRiskHistory] = useState<string | null>(null);
 
   const fetchProjectsAtRisk = async () => {
     try {
@@ -303,18 +349,28 @@ export default function ProjectsAtRiskPage() {
                             </div>
                             
                             {/* Risk History */}
-                            <div>
+                            <div className="relative">
                               <h4 className="text-sm font-medium text-gray-700 mb-2">Risk History</h4>
                               <div className="flex items-center space-x-1">
-                                <span className="text-lg" title={project.riskHistoryDetails.map(h => 
-                                  `${h.health} (${new Date(h.date).toLocaleDateString()})`
-                                ).join(', ')}>
+                                <span 
+                                  className="text-lg cursor-help" 
+                                  onMouseEnter={() => setHoveredRiskHistory(project.key)}
+                                  onMouseLeave={() => setHoveredRiskHistory(null)}
+                                >
                                   {project.riskHistory}
                                 </span>
                               </div>
                               <p className="text-xs text-gray-500 mt-1">
                                 Hover to see dates and details
                               </p>
+                              
+                              {/* Custom Tooltip */}
+                              <RiskHistoryTooltip
+                                riskHistoryDetails={project.riskHistoryDetails}
+                                isVisible={hoveredRiskHistory === project.key}
+                                onMouseEnter={() => setHoveredRiskHistory(project.key)}
+                                onMouseLeave={() => setHoveredRiskHistory(null)}
+                              />
                             </div>
                           </div>
                         </div>

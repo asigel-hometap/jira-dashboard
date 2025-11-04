@@ -84,15 +84,14 @@ export async function GET(request: NextRequest) {
             ? await dataProcessor.getActiveHealthBreakdownForTeamMember(fullName)
             : await dataProcessor.getActiveHealthBreakdownForTeamMemberAtDate(fullName, targetDate);
           
+          // Total project count = sum of all health values (including complete and unknown)
           const totalProjectCount = healthBreakdown.onTrack + healthBreakdown.atRisk + 
                                    healthBreakdown.offTrack + healthBreakdown.onHold + 
                                    healthBreakdown.mystery + healthBreakdown.complete + 
                                    healthBreakdown.unknown;
           
-          // Active projects (excluding complete)
-          const activeProjectCount = healthBreakdown.onTrack + healthBreakdown.atRisk + 
-                                   healthBreakdown.offTrack + healthBreakdown.onHold + 
-                                   healthBreakdown.mystery + healthBreakdown.unknown;
+          // Active projects = total (all health values included)
+          const activeProjectCount = totalProjectCount;
           
           weekData[shortName] = totalProjectCount;
           weekData[`${shortName}_active`] = activeProjectCount;
@@ -132,15 +131,14 @@ export async function GET(request: NextRequest) {
           try {
             const healthBreakdown = await dataProcessor.getActiveHealthBreakdownForTeamMember(fullName);
             
+            // Total project count = sum of all health values (including complete and unknown)
             const totalProjectCount = healthBreakdown.onTrack + healthBreakdown.atRisk + 
                                      healthBreakdown.offTrack + healthBreakdown.onHold + 
                                      healthBreakdown.mystery + healthBreakdown.complete + 
                                      healthBreakdown.unknown;
             
-            // Active projects (excluding complete)
-            const activeProjectCount = healthBreakdown.onTrack + healthBreakdown.atRisk + 
-                                     healthBreakdown.offTrack + healthBreakdown.onHold + 
-                                     healthBreakdown.mystery + healthBreakdown.unknown;
+            // Active projects = total (all health values included)
+            const activeProjectCount = totalProjectCount;
             
             mostRecentWeek[shortName] = totalProjectCount;
             mostRecentWeek[`${shortName}_active`] = activeProjectCount;

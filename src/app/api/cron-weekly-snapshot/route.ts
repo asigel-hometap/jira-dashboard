@@ -2,12 +2,42 @@ import { NextRequest, NextResponse } from 'next/server';
 import { initializeDatabase, getDatabaseService } from '@/lib/database-factory';
 import { getAllIssuesForCycleAnalysis } from '@/lib/jira-api';
 
-export async function POST(request: NextRequest) {
+/**
+ * Weekly snapshot cron job endpoint
+ * 
+ * This endpoint can be called by:
+ * - Vercel Cron Jobs (via vercel.json)
+ * - GitHub Actions
+ * - External cron services (cron-job.org, etc.)
+ * 
+ * It automatically creates a weekly snapshot for the start of the current week.
+ * It includes authentication check to prevent unauthorized access.
+ */
+
+export async function GET(request: NextRequest) {
   try {
+    // Check for authorization header (for security)
+    const authHeader = request.headers.get('authorization');
+    const cronSecret = process.env.CRON_SECRET;
+    
+    // If CRON_SECRET is set, require it for authentication
+    if (cronSecret) {
+      if (authHeader !== `Bearer ${cronSecret}`) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Unauthorized',
+            message: 'Missing or invalid authorization token'
+          },
+          { status: 401 }
+        );
+      }
+    }
+    
     await initializeDatabase();
     const dbService = getDatabaseService();
     
-    console.log('Creating weekly snapshot with archived project filtering...');
+    console.log('[CRON] Creating weekly snapshot...');
     const startTime = Date.now();
     
     // Get current date and determine snapshot date (start of current week)
@@ -16,11 +46,17 @@ export async function POST(request: NextRequest) {
     snapshotDate.setDate(now.getDate() - now.getDay()); // Start of current week (Sunday)
     snapshotDate.setHours(0, 0, 0, 0);
     
-    console.log(`Creating snapshot for week starting: ${snapshotDate.toISOString().split('T')[0]}`);
+    console.log(`[CRON] Creating snapshot for week starting: ${snapshotDate.toISOString().split('T')[0]}`);
+    
+    // Check if snapshot already exists for this week
+    const existingData = await dbService.getCapacityData(snapshotDate, snapshotDate);
+    if (existingData.length > 0) {
+      console.log(`[CRON] Snapshot already exists for ${snapshotDate.toISOString().split('T')[0]}, updating...`);
+    }
     
     // Fetch live data directly from Jira API
     const jiraIssues = await getAllIssuesForCycleAnalysis();
-    console.log(`Fetched ${jiraIssues.length} issues from Jira`);
+    console.log(`[CRON] Fetched ${jiraIssues.length} issues from Jira`);
     
     // Filter for active projects - only filter by status and archived, NOT by health
     // All health values (Complete, unknown, etc.) should be included
@@ -44,7 +80,7 @@ export async function POST(request: NextRequest) {
       return isActiveStatus;
     });
     
-    console.log(`Filtered to ${activeProjects.length} active projects (excluding archived)`);
+    console.log(`[CRON] Filtered to ${activeProjects.length} active projects (excluding archived)`);
     
     // Team member mapping
     const teamMemberMap = {
@@ -58,7 +94,7 @@ export async function POST(request: NextRequest) {
     };
     
     // Calculate workload for each team member
-    const teamMemberCounts: { [key: string]: { total: number; active: number } } = {};
+    const teamMemberCounts: { [key: string]: number } = {};
     
     for (const [fullName, shortName] of Object.entries(teamMemberMap)) {
       // Filter projects assigned to this team member
@@ -69,66 +105,44 @@ export async function POST(request: NextRequest) {
       
       // Calculate active project count (already filtered above)
       const activeProjectCount = memberProjects.length;
+      teamMemberCounts[shortName] = activeProjectCount;
       
-      teamMemberCounts[shortName] = {
-        total: activeProjectCount,
-        active: activeProjectCount
-      };
-      
-      console.log(`${fullName}: ${activeProjectCount} active projects`);
+      console.log(`[CRON] ${fullName}: ${activeProjectCount} active projects`);
     }
     
     // Create capacity data entry for this week
     const capacityData = {
       date: snapshotDate,
-      adam: teamMemberCounts.adam.active,
-      jennie: teamMemberCounts.jennie.active,
-      jacqueline: teamMemberCounts.jacqueline.active,
-      robert: teamMemberCounts.robert.active,
-      garima: teamMemberCounts.garima.active,
-      lizzy: teamMemberCounts.lizzy.active,
-      sanela: teamMemberCounts.sanela.active,
-      total: Object.values(teamMemberCounts).reduce((sum, counts) => sum + counts.active, 0),
-      notes: `Weekly snapshot (status in active statuses, excluding archived, all health values included) - Created ${new Date().toISOString()}`
+      adam: teamMemberCounts.adam || 0,
+      jennie: teamMemberCounts.jennie || 0,
+      jacqueline: teamMemberCounts.jacqueline || 0,
+      robert: teamMemberCounts.robert || 0,
+      garima: teamMemberCounts.garima || 0,
+      lizzy: teamMemberCounts.lizzy || 0,
+      sanela: teamMemberCounts.sanela || 0,
+      total: Object.values(teamMemberCounts).reduce((sum, count) => sum + count, 0),
+      notes: `[CRON] Weekly snapshot (status in active statuses, excluding archived, all health values included) - Created ${new Date().toISOString()}`
     };
     
-    // Store the capacity data
+    // Store the capacity data (will update if exists due to ON CONFLICT)
     await dbService.insertCapacityData(capacityData);
-    
-            // Skip project snapshots for now due to foreign key constraints
-            // TODO: Fix foreign key constraints or create a different approach for project snapshots
-            const snapshotCount = 0;
-    // for (const project of activeProjects) {
-    //   const snapshot = {
-    //     id: `${snapshotDate.toISOString().split('T')[0]}-${project.key}`,
-    //     snapshotDate,
-    //     issueKey: project.key,
-    //     status: project.fields.status.name,
-    //     health: project.fields.customfield_10238?.value || null,
-    //     assignee: project.fields.assignee?.displayName || null,
-    //     isActive: true // All projects in this snapshot are active
-    //   };
-    //   
-    //   await dbService.insertProjectSnapshot(snapshot);
-    //   snapshotCount++;
-    // }
     
     const duration = Date.now() - startTime;
     
     return NextResponse.json({
       success: true,
-      message: `Weekly snapshot created successfully`,
+      message: `Weekly snapshot created successfully via cron`,
       data: {
         snapshotDate: snapshotDate.toISOString().split('T')[0],
         totalProjects: activeProjects.length,
-        projectSnapshots: snapshotCount,
         teamMemberCounts,
-        duration: `${duration}ms`
+        duration: `${duration}ms`,
+        triggeredBy: 'cron'
       }
     });
     
   } catch (error) {
-    console.error('Error creating weekly snapshot:', error);
+    console.error('[CRON] Error creating weekly snapshot:', error);
     return NextResponse.json(
       { 
         success: false, 
@@ -139,3 +153,9 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// Also support POST for compatibility
+export async function POST(request: NextRequest) {
+  return GET(request);
+}
+

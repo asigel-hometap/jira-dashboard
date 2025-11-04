@@ -63,14 +63,22 @@ export function useAccurateSparklineData(teamMember: string): UseAccurateSparkli
         throw new Error(result.error || 'Failed to fetch sparkline data');
       }
 
-      // Extract data for the specific team member
+      // Use pre-processed member data if available (performance optimization)
       const memberKey = getMemberKey(teamMember);
-      const memberData = result.data.snapshots.map((snapshot: any) => ({
-        value: snapshot[memberKey] || 0,
-        date: snapshot.date,
-        dataSource: snapshot.dataSource,
-        error: snapshot.error
-      }));
+      let memberData;
+      
+      if (result.data.memberData && result.data.memberData[memberKey]) {
+        // Use pre-processed data (faster)
+        memberData = result.data.memberData[memberKey];
+      } else {
+        // Fallback to processing snapshots (slower)
+        memberData = result.data.snapshots.map((snapshot: any) => ({
+          value: snapshot[memberKey] || 0,
+          date: snapshot.date,
+          dataSource: snapshot.dataSource,
+          error: snapshot.error
+        }));
+      }
 
       const sparklineData: SparklineData = {
         data: memberData.map((d: any) => d.value),

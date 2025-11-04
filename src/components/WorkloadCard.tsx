@@ -10,8 +10,9 @@ interface WorkloadCardProps {
 }
 
 const WorkloadCard = React.memo(({ member, trendData, globalMaxProjects }: WorkloadCardProps) => {
-  // Use the most recent sparkline data point for active project count
-  const activeProjectCount = trendData.data.length > 0 ? trendData.data[trendData.data.length - 1] : 0;
+  // Use the active project count from the weekly snapshot (member.activeProjectCount)
+  // This is the reliable persisted count from the start of the week
+  const activeProjectCount = member.activeProjectCount || 0;
   const isOverloaded = activeProjectCount >= 6;
   
   return (

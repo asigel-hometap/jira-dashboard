@@ -10,16 +10,36 @@ export function useWorkloadData() {
     try {
       setLoading(true);
       setError(null);
-      // Use the new live API endpoint that fetches data directly from Jira
-      const response = await fetch('/api/workload-live');
-      const result = await response.json();
       
-      if (result.success) {
-        setWorkloadData(result.data);
-      } else {
-        setError(result.error || 'Failed to fetch workload data');
+      // First try the weekly snapshot API endpoint
+      const weeklyResponse = await fetch('/api/workload-weekly');
+      const weeklyResult = await weeklyResponse.json();
+      
+      if (weeklyResult.success) {
+        setWorkloadData(weeklyResult.data);
+        return;
       }
-    } catch {
+      
+      // If no snapshot exists, fall back to live data for now
+      // This allows the page to load while we set up snapshots properly
+      console.warn('Weekly snapshot not found, falling back to live data:', weeklyResult.error);
+      
+      if (weeklyResult.action === 'create_snapshot') {
+        // Try live data as fallback
+        const liveResponse = await fetch('/api/workload-live');
+        const liveResult = await liveResponse.json();
+        
+        if (liveResult.success) {
+          setWorkloadData(liveResult.data);
+          setError('Using live data (no snapshot found). Please create a weekly snapshot for persistent counts.');
+        } else {
+          setError(weeklyResult.error || 'No weekly snapshot found. Please create a snapshot first.');
+        }
+      } else {
+        setError(weeklyResult.error || 'Failed to fetch workload data');
+      }
+    } catch (err) {
+      console.error('Error fetching workload data:', err);
       setError('Network error fetching data');
     } finally {
       setLoading(false);

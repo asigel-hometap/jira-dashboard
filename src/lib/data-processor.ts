@@ -461,6 +461,7 @@ export class DataProcessor {
     const jiraIssues = await getAllIssuesForCycleAnalysis();
     
     // Filter for active projects (discovery, build, beta statuses) and exclude archived projects
+    // No health-based filtering - all health values should be included
     const activeProjects = jiraIssues.filter(issue => {
       const status = issue.fields.status.name;
       const isArchived = issue.fields.customfield_10454; // "Idea archived" field
@@ -471,7 +472,7 @@ export class DataProcessor {
         return false;
       }
       
-      // Include only discovery, build, beta statuses
+      // Include only discovery, build, beta statuses (no health filter)
       return status === '02 Generative Discovery' ||
              status === '04 Problem Discovery' ||
              status === '05 Solution Discovery' ||
@@ -479,13 +480,10 @@ export class DataProcessor {
              status === '07 Beta';
     });
     
-    // Filter issues by assignee and exclude Complete projects only if they're in Live status (08+)
+    // Filter issues by assignee only (no health filtering)
     const memberIssues = activeProjects.filter(issue => {
       const assignee = issue.fields.assignee?.displayName;
-      const health = issue.fields.customfield_10238?.value;
-      const status = issue.fields.status.name;
-      
-      return assignee === teamMemberName && !(health === 'Complete' && status.startsWith('08'));
+      return assignee === teamMemberName;
     });
     
     const breakdown = {
@@ -494,7 +492,7 @@ export class DataProcessor {
       offTrack: 0,
       onHold: 0,
       mystery: 0,
-      complete: 0, // This will always be 0 for active breakdown
+      complete: 0,
       unknown: 0
     };
 
@@ -583,7 +581,8 @@ export class DataProcessor {
     for (const issue of memberIssues) {
       try {
         // First check if the issue was assigned to this team member at the target date
-        const wasAssignedAtDate = await this.wasIssueAssignedToMemberAtDate(issue.key, teamMemberName, targetDate);
+        // Pass the issue object so we can check creation date if needed
+        const wasAssignedAtDate = await this.wasIssueAssignedToMemberAtDate(issue.key, teamMemberName, targetDate, issue);
         
         if (!wasAssignedAtDate) {
           // Skip this issue if it wasn't assigned to the team member at the target date
@@ -593,8 +592,13 @@ export class DataProcessor {
         const projectState = await this.getProjectStateAtDate(issue, targetDate);
         
         if (projectState) {
-          // Check if project was active at this date (not in inactive statuses)
-          const isActive = !INACTIVE_STATUSES.includes(projectState.status as any);
+          // Check if project was in an active status at this date
+          // Use the same active statuses as the initial filter
+          const isActive = projectState.status === '02 Generative Discovery' ||
+                          projectState.status === '04 Problem Discovery' ||
+                          projectState.status === '05 Solution Discovery' ||
+                          projectState.status === '06 Build' ||
+                          projectState.status === '07 Beta';
           
           if (isActive) {
             switch (projectState.health) {
@@ -2263,7 +2267,7 @@ export class DataProcessor {
   /**
    * Get the state of a project at a specific date by analyzing its changelog
    */
-  private async getProjectStateAtDate(issue: any, targetDate: Date): Promise<{
+  public async getProjectStateAtDate(issue: any, targetDate: Date): Promise<{
     status: string;
     health: string;
   } | null> {
@@ -2317,8 +2321,9 @@ export class DataProcessor {
 
   /**
    * Check if an issue was assigned to a specific team member at a given date
+   * @param issue Optional issue object to check creation date and current assignee if changelog is incomplete
    */
-  private async wasIssueAssignedToMemberAtDate(issueKey: string, teamMemberName: string, targetDate: Date): Promise<boolean> {
+  public async wasIssueAssignedToMemberAtDate(issueKey: string, teamMemberName: string, targetDate: Date, issue?: any): Promise<boolean> {
     try {
       const changelog = await this.getIssueChangelog(issueKey);
       
@@ -2343,10 +2348,34 @@ export class DataProcessor {
         })
         .sort((a: any, b: any) => a.date.getTime() - b.date.getTime());
 
-      // If no assignment changes found, check if the issue was created before the target date
-      // and assume it was unassigned initially
+      // If no assignment changes found before target date, 
+      // check if the issue was created before the target date and what its initial assignment was
       if (assignmentChanges.length === 0) {
-        // This would need the issue creation date, but for now assume unassigned
+        // No assignment changes in changelog before target date
+        // This could mean:
+        // 1. Issue was never reassigned (assigned at creation)
+        // 2. Issue was created after target date
+        // 3. Changelog doesn't have assignment data
+        
+        // If we have the issue object, check creation date and current assignee
+        if (issue && issue.fields && issue.fields.created) {
+          const createdDate = new Date(issue.fields.created);
+          
+          // If issue was created after target date, it wasn't assigned to anyone at that date
+          if (createdDate > targetDate) {
+            return false;
+          }
+          
+          // If issue was created before or on target date, and current assignee matches,
+          // it was likely assigned at creation (no changelog entry needed)
+          const currentAssignee = issue.fields.assignee?.displayName;
+          if (currentAssignee === teamMemberName) {
+            return true;
+          }
+        }
+        
+        // No changelog data and can't determine from issue object
+        // Return false to be conservative
         return false;
       }
 
@@ -2354,6 +2383,7 @@ export class DataProcessor {
       const lastAssignment = assignmentChanges[assignmentChanges.length - 1];
       
       // Check if the last assignment was to our team member
+      // If 'to' is null, it means unassigned
       return lastAssignment.to === teamMemberName;
       
     } catch (error) {

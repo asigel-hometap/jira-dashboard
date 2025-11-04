@@ -2,11 +2,14 @@
 
 import React from 'react';
 import { useWorkloadData } from '@/hooks/useWorkloadData';
-import { useAccurateSparklineData } from '@/hooks/useAccurateSparklineData';
+import { useSharedSparklineData } from '@/hooks/useSharedSparklineData';
 import WorkloadCard from '@/components/WorkloadCard';
 
 export default function Home() {
   const { workloadData, loading: workloadLoading, error: workloadError, refetch: refetchWorkload } = useWorkloadData();
+  const [snapshotLoading, setSnapshotLoading] = React.useState(false);
+  const [snapshotError, setSnapshotError] = React.useState<string | null>(null);
+  const [snapshotMessage, setSnapshotMessage] = React.useState<string | null>(null);
   
   // Get sparkline data for each team member
   const teamMembers = [
@@ -19,14 +22,14 @@ export default function Home() {
     'Sanela Smaka'
   ];
   
-  // Initialize sparkline hooks for each team member
-  const adamSparkline = useAccurateSparklineData('Adam Sigel');
-  const jennieSparkline = useAccurateSparklineData('Jennie Goldenberg');
-  const jacquelineSparkline = useAccurateSparklineData('Jacqueline Gallagher');
-  const robertSparkline = useAccurateSparklineData('Robert J. Johnson');
-  const garimaSparkline = useAccurateSparklineData('Garima Giri');
-  const lizzySparkline = useAccurateSparklineData('Lizzy Magill');
-  const sanelaSparkline = useAccurateSparklineData('Sanela Smaka');
+  // Initialize sparkline hooks for each team member (now using shared fetch)
+  const adamSparkline = useSharedSparklineData('Adam Sigel');
+  const jennieSparkline = useSharedSparklineData('Jennie Goldenberg');
+  const jacquelineSparkline = useSharedSparklineData('Jacqueline Gallagher');
+  const robertSparkline = useSharedSparklineData('Robert J. Johnson');
+  const garimaSparkline = useSharedSparklineData('Garima Giri');
+  const lizzySparkline = useSharedSparklineData('Lizzy Magill');
+  const sanelaSparkline = useSharedSparklineData('Sanela Smaka');
   
   const sparklineHooks = [
     adamSparkline,
@@ -51,6 +54,80 @@ export default function Home() {
       refetchWorkload(),
       ...sparklineHooks.map(hook => hook.refresh())
     ]);
+  };
+
+  const handleCreateSnapshot = async () => {
+    try {
+      setSnapshotLoading(true);
+      setSnapshotError(null);
+      setSnapshotMessage(null);
+      
+      const response = await fetch('/api/create-weekly-snapshot', {
+        method: 'POST'
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setSnapshotMessage(`Snapshot created successfully for ${result.data.snapshotDate}`);
+        // Refresh workload data to show the new snapshot
+        await refetchWorkload();
+      } else {
+        setSnapshotError(result.error || 'Failed to create snapshot');
+      }
+    } catch (err) {
+      setSnapshotError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setSnapshotLoading(false);
+    }
+  };
+
+  const handleCreateHistoricalSnapshots = async () => {
+    try {
+      setSnapshotLoading(true);
+      setSnapshotError(null);
+      setSnapshotMessage(null);
+      
+      setSnapshotMessage('Creating historical snapshots... This may take several minutes. Please wait.');
+      
+      const response = await fetch('/api/create-historical-snapshots', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({}) // Empty body = find and create all missing weeks since Sept 15
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        const successCount = result.summary?.successful || 0;
+        const errorCount = result.summary?.errors || 0;
+        const total = result.summary?.total || 0;
+        
+        if (successCount > 0) {
+          setSnapshotMessage(
+            `✓ Created ${successCount} historical snapshot${successCount !== 1 ? 's' : ''}${errorCount > 0 ? ` (${errorCount} error${errorCount !== 1 ? 's' : ''})` : ''}. ` +
+            `This will improve performance and sparkline accuracy.`
+          );
+          // Refresh workload data and sparklines
+          await refetchWorkload();
+          await Promise.all(sparklineHooks.map(hook => hook.refresh()));
+        } else {
+          setSnapshotMessage(`No snapshots were created. ${errorCount > 0 ? `${errorCount} error${errorCount !== 1 ? 's' : ''} occurred.` : 'All weeks may already have snapshots.'}`);
+        }
+      } else {
+        setSnapshotError(result.error || 'Failed to create historical snapshots');
+      }
+    } catch (err) {
+      setSnapshotError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setSnapshotLoading(false);
+    }
   };
 
   if (loading) {
@@ -93,22 +170,51 @@ export default function Home() {
         <div className="flex justify-between items-center">
           <div>
             <h3 className="text-sm font-medium text-blue-800">
-              Accurate Sparkline Data
+              Team Workload - Weekly Snapshot Data
             </h3>
             <p className="text-sm text-blue-600 mt-1">
-              Historical data from CSV (pre-Sept 15, 2025) + Jira trends analysis (Sept 15+)
+              Project counts are from weekly snapshots (start of week) stored in capacity_data table
             </p>
             <p className="text-xs text-blue-500 mt-1">
-              Shows active projects: health ≠ &apos;complete&apos; AND status in (Generative Discovery, Problem Discovery, Solution Discovery, Build, Beta)
+              Active projects: status in (Generative Discovery, Problem Discovery, Solution Discovery, Build, Beta), excluding archived. All health values included.
             </p>
+            {workloadData.length > 0 && (workloadData[0] as any).snapshotDate && (
+              <p className="text-xs text-blue-400 mt-1">
+                Current snapshot date: {(workloadData[0] as any).snapshotDate}
+              </p>
+            )}
+            {snapshotMessage && (
+              <p className="text-xs text-green-600 mt-1 font-medium">
+                {snapshotMessage}
+              </p>
+            )}
+            {snapshotError && (
+              <p className="text-xs text-red-600 mt-1 font-medium">
+                {snapshotError}
+              </p>
+            )}
           </div>
           <div className="flex space-x-2">
+            <button
+              onClick={handleCreateSnapshot}
+              disabled={snapshotLoading || loading}
+              className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50"
+            >
+              {snapshotLoading ? 'Creating...' : 'Create Current Week Snapshot'}
+            </button>
+            <button
+              onClick={handleCreateHistoricalSnapshots}
+              disabled={snapshotLoading || loading}
+              className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50"
+            >
+              {snapshotLoading ? 'Processing...' : 'Create Historical Snapshots'}
+            </button>
             <button
               onClick={handleRefresh}
               disabled={loading}
               className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
             >
-              {loading ? 'Refreshing...' : 'Refresh Data'}
+              {loading ? 'Refreshing...' : 'Refresh Display'}
             </button>
             <a 
               href="/cache-management" 

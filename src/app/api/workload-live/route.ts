@@ -15,10 +15,10 @@ export async function GET(request: NextRequest) {
     });
     console.log('Status distribution:', statusCounts);
     
-    // Filter for active projects using the same logic as accurate-sparkline
+    // Filter for active projects - only filter by status and archived, NOT by health
+    // All health values (Complete, unknown, etc.) should be included
     const activeProjects = jiraIssues.filter(issue => {
       const status = issue.fields.status.name;
-      const health = issue.fields.customfield_10238?.value;
       const isArchived = issue.fields.customfield_10454; // "Idea archived" field
       const archivedOn = issue.fields.customfield_10456; // "Idea archived on" field
       
@@ -27,18 +27,14 @@ export async function GET(request: NextRequest) {
         return false;
       }
       
-      // Apply the same filtering criteria as accurate-sparkline: health !== 'complete' AND status in active statuses
+      // Include only active statuses (no health-based filtering)
       const isActiveStatus = status === '02 Generative Discovery' ||
                             status === '04 Problem Discovery' ||
                             status === '05 Solution Discovery' ||
                             status === '06 Build' ||
                             status === '07 Beta';
       
-      // Only include projects with specific health values (exclude null/undefined and 'Complete')
-      const isActiveHealth = health && health !== 'Complete' && 
-                            ['On Track', 'At Risk', 'Off Track', 'On Hold', 'Mystery'].includes(health);
-      
-      return isActiveStatus && isActiveHealth;
+      return isActiveStatus;
     });
     
     console.log(`Filtered to ${activeProjects.length} active projects`);
@@ -141,13 +137,9 @@ export async function GET(request: NextRequest) {
         }
       });
       
-      // Calculate total active project count (excluding complete projects in Live status)
-      const activeProjectCount = memberProjects.filter(project => {
-        const health = project.fields.customfield_10238?.value;
-        const status = project.fields.status.name;
-        // Exclude complete projects only if they're in Live status (08+)
-        return !(health === 'Complete' && status.startsWith('08'));
-      }).length;
+      // Calculate total active project count
+      // Simply count all memberProjects - no health-based filtering
+      const activeProjectCount = memberProjects.length;
       
       return {
         teamMember,

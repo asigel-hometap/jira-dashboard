@@ -78,7 +78,11 @@ Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
 ## API Endpoints
 
 - `POST /api/init` - Initialize database and load data
-- `GET /api/workload` - Get team workload data
+- `GET /api/workload-weekly` - Get team workload data from weekly snapshots (recommended)
+- `GET /api/workload-live` - Get team workload data from live Jira API
+- `GET /api/workload` - Legacy workload endpoint (deprecated, use workload-weekly)
+- `POST /api/create-weekly-snapshot` - Manually create/update weekly snapshot
+- `GET /api/cron-weekly-snapshot` - Cron endpoint for automated weekly snapshots
 - `GET /api/accurate-sparkline` - Get accurate historical sparkline data
 - `POST /api/accurate-sparkline` - Refresh sparkline data
 - `GET /api/projects-at-risk` - Get projects at risk
@@ -114,6 +118,57 @@ src/
 - **team_members**: Team member information
 - **project_snapshots**: Weekly snapshots of project state
 - **capacity_data**: Historical capacity data from CSV
+
+## Weekly Snapshots & Automation
+
+The Team Workload tab uses **weekly snapshots** stored in the `capacity_data` table to ensure reliable and consistent project counts.
+
+### Manual Snapshot Creation
+
+You can create or update a weekly snapshot manually:
+1. Click the "Create Weekly Snapshot" button on the Team Workload page
+2. Or call the API directly: `POST /api/create-weekly-snapshot`
+
+### Automated Weekly Snapshots
+
+Weekly snapshots can be automated in two ways:
+
+#### Option 1: Vercel Cron Jobs (Recommended for Vercel deployments)
+
+The `vercel.json` file includes a cron job configuration that runs every Monday at midnight UTC. Make sure to:
+- Set the `CRON_SECRET` environment variable in Vercel for security
+- The cron job will automatically call `/api/cron-weekly-snapshot`
+
+#### Option 2: GitHub Actions
+
+A GitHub Actions workflow (`.github/workflows/weekly-snapshot.yml`) is configured to run every Monday at midnight UTC. This is useful if:
+- You're not using Vercel
+- You want to run snapshots from GitHub Actions
+
+Required GitHub Secrets:
+- `JIRA_EMAIL`, `JIRA_TOKEN`, `JIRA_BASE_URL`
+- `DATABASE_URL` (if using external database)
+- `NEXT_PUBLIC_BASE_URL` (URL of your deployed app)
+- `CRON_SECRET` (optional, for authentication)
+
+#### Option 3: External Cron Service
+
+You can use any external cron service (cron-job.org, EasyCron, etc.) to call:
+```
+GET https://your-app-url/api/cron-weekly-snapshot
+```
+
+If `CRON_SECRET` is set, include it in the Authorization header:
+```
+Authorization: Bearer YOUR_CRON_SECRET
+```
+
+### Snapshot Data
+
+Weekly snapshots store:
+- Date: Start of week (Sunday)
+- Active project counts per team member
+- Filtering criteria: `health !== 'Complete' AND status in active statuses, excluding archived`
 
 ## Deployment
 

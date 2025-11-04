@@ -1,0 +1,67 @@
+name: Weekly Snapshot Automation
+
+on:
+  workflow_dispatch:
+    # Allow manual trigger
+  schedule:
+    # Run every Monday at 12:00 AM UTC (Sunday evening in US timezones)
+    - cron: '0 0 * * 1'
+
+jobs:
+  create-weekly-snapshot:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Create Weekly Snapshot
+      run: |
+        # Determine the base URL based on environment
+        BASE_URL=${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+        
+        # If we're running locally, we'd need to start the server
+        # For production deployments, use the actual deployed URL
+        if [ "$BASE_URL" = "http://localhost:3000" ]; then
+          echo "Starting development server..."
+          npm run dev &
+          sleep 30
+        fi
+        
+        # Get auth token if set
+        AUTH_HEADER=""
+        if [ -n "$CRON_SECRET" ]; then
+          AUTH_HEADER="Authorization: Bearer $CRON_SECRET"
+        fi
+        
+        # Call the cron endpoint
+        curl -X GET "$BASE_URL/api/cron-weekly-snapshot" \
+          -H "$AUTH_HEADER" \
+          -H "Content-Type: application/json" \
+          -w "\nHTTP Status: %{http_code}\n" \
+          -v
+        
+      env:
+        JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+        JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+        JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        NEXT_PUBLIC_BASE_URL: ${{ secrets.NEXT_PUBLIC_BASE_URL }}
+        CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        
+    - name: Report Result
+      if: always()
+      run: |
+        echo "## Weekly Snapshot Creation" >> $GITHUB_STEP_SUMMARY
+        echo "**Triggered:** $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+

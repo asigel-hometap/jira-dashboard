@@ -65,9 +65,15 @@ const WorkloadCard = React.memo(({ member, trendData, globalMaxProjects }: Workl
         <div className="flex-1 max-w-2xl">
           <div className="flex items-center justify-between mb-2 pr-2">
             <div className="text-xs text-gray-500">Workload Trend</div>
-            <div className="flex items-center gap-1 text-xs">
-              <div className={`w-2 h-2 rounded-full ${isOverloaded ? 'bg-red-500' : 'bg-blue-500'}`}></div>
-              <span className="text-gray-600">Active Projects</span>
+            <div className="flex items-center gap-3 text-xs">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                <span className="text-gray-600">≤5 Projects</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                <span className="text-gray-600">&gt;5 Projects</span>
+              </div>
             </div>
           </div>
           <div className="bg-gray-50 rounded-lg p-3">

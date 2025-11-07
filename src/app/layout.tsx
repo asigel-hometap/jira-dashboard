@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Mulish } from 'next/font/google'
 import './globals.css'
 import Navigation from '@/components/Navigation'
 import { CycleTimeProvider } from '@/contexts/CycleTimeContext'
 
-const inter = Inter({ subsets: ['latin'] })
+const mulish = Mulish({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Jira Dashboard',
@@ -18,7 +18,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={mulish.className}>
         <CycleTimeProvider>
           <div className="min-h-screen bg-gray-50">
             <header className="bg-white shadow-sm border-b">

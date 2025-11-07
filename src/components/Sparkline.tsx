@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface SparklineProps {
   data: number[];
@@ -17,37 +17,20 @@ interface SparklineProps {
 // Custom tooltip component - memoized to prevent re-renders
 const CustomTooltip = React.memo(({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
+    const value = payload[0].value;
+    const isOverloaded = value > 5;
     return (
       <div className="bg-white p-2 border border-gray-200 rounded shadow-lg text-xs">
         <p className="font-medium text-gray-900">{`Date: ${label}`}</p>
-        {payload.map((entry: any, index: number) => (
-          <p key={index} className={entry.dataKey === 'activeValue' ? 'text-green-600' : 'text-blue-600'}>
-            {entry.dataKey === 'activeValue' ? 'Active' : 'Total'}: {entry.value}
-          </p>
-        ))}
+        <p className={isOverloaded ? 'text-red-600' : 'text-blue-600'}>
+          Active Projects: {value}
+        </p>
       </div>
     );
   }
   return null;
 });
 CustomTooltip.displayName = 'CustomTooltip';
-
-// Custom dot component for data points - memoized to prevent re-renders
-const CustomDot = React.memo((props: any) => {
-  const { cx, cy, fill } = props;
-  return (
-    <circle
-      cx={cx}
-      cy={cy}
-      r={3}
-      fill={fill}
-      stroke="white"
-      strokeWidth={2}
-      className="hover:r-4 transition-all duration-200"
-    />
-  );
-});
-CustomDot.displayName = 'CustomDot';
 
 const Sparkline = React.memo(({ 
   data, 
@@ -67,7 +50,9 @@ const Sparkline = React.memo(({
     return data.map((value, index) => ({
       value,
       date: dates[index] || `Week ${index + 1}`,
-      index
+      index,
+      // Color based on overload threshold: blue if <=5, red if >5
+      color: value <= 5 ? '#3B82F6' : '#EF4444'
     }));
   }, [data, dates]);
 
@@ -82,7 +67,7 @@ const Sparkline = React.memo(({
   return (
     <div className={`w-full ${className}`} style={{ height: height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+        <BarChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
           <XAxis 
             dataKey="date" 
             hide 
@@ -98,19 +83,18 @@ const Sparkline = React.memo(({
           {showTooltip && (
             <Tooltip 
               content={<CustomTooltip />}
-              cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: '3 3' }}
+              cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
             />
           )}
-          <Line
-            type="monotone"
+          <Bar
             dataKey="value"
-            stroke={color}
-            strokeWidth={strokeWidth}
-            dot={<CustomDot fill={color} />}
-            activeDot={{ r: 4, fill: color, stroke: 'white', strokeWidth: 2 }}
-            connectNulls={false}
-          />
-        </LineChart>
+            radius={[2, 2, 0, 0]}
+          >
+            {chartData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} />
+            ))}
+          </Bar>
+        </BarChart>
       </ResponsiveContainer>
     </div>
   );

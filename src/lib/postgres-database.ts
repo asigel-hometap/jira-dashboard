@@ -391,6 +391,78 @@ export class PostgresDatabaseService {
     }
   }
 
+  async getHealthTransitions(issueKey: string): Promise<HealthTransition[]> {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(
+        'SELECT * FROM health_transitions WHERE issue_key = $1 ORDER BY timestamp ASC',
+        [issueKey]
+      );
+      return result.rows.map(this.mapRowToHealthTransition);
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Get all transitions (status and health) for multiple issues in one query
+   * This is much more efficient than querying each issue separately
+   */
+  async getTransitionsForIssues(issueKeys: string[]): Promise<{
+    statusTransitions: Map<string, StatusTransition[]>;
+    healthTransitions: Map<string, HealthTransition[]>;
+  }> {
+    if (issueKeys.length === 0) {
+      return {
+        statusTransitions: new Map(),
+        healthTransitions: new Map(),
+      };
+    }
+
+    const client = await this.pool.connect();
+    try {
+      // Query status transitions for all issues
+      const statusResult = await client.query(
+        `SELECT * FROM status_transitions 
+         WHERE issue_key = ANY($1::text[]) 
+         ORDER BY issue_key, timestamp ASC`,
+        [issueKeys]
+      );
+
+      // Query health transitions for all issues
+      const healthResult = await client.query(
+        `SELECT * FROM health_transitions 
+         WHERE issue_key = ANY($1::text[]) 
+         ORDER BY issue_key, timestamp ASC`,
+        [issueKeys]
+      );
+
+      // Group by issue key
+      const statusTransitions = new Map<string, StatusTransition[]>();
+      const healthTransitions = new Map<string, HealthTransition[]>();
+
+      for (const row of statusResult.rows) {
+        const transition = this.mapRowToStatusTransition(row);
+        if (!statusTransitions.has(transition.issueKey)) {
+          statusTransitions.set(transition.issueKey, []);
+        }
+        statusTransitions.get(transition.issueKey)!.push(transition);
+      }
+
+      for (const row of healthResult.rows) {
+        const transition = this.mapRowToHealthTransition(row);
+        if (!healthTransitions.has(transition.issueKey)) {
+          healthTransitions.set(transition.issueKey, []);
+        }
+        healthTransitions.get(transition.issueKey)!.push(transition);
+      }
+
+      return { statusTransitions, healthTransitions };
+    } finally {
+      client.release();
+    }
+  }
+
   // Team members methods
   async insertTeamMember(member: TeamMember): Promise<void> {
     const client = await this.pool.connect();

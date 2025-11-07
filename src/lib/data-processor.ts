@@ -6,6 +6,23 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 export class DataProcessor {
+  // In-memory cache for transitions to avoid repeated database queries
+  private transitionsCache: Map<string, {
+    statusTransitions: StatusTransition[];
+    healthTransitions: HealthTransition[];
+  }> = new Map();
+  
+  // In-memory cache for changelog responses (for assignee checks)
+  private changelogCache: Map<string, any> = new Map();
+  
+  /**
+   * Clear all caches (useful when processing is complete)
+   */
+  public clearCaches(): void {
+    this.transitionsCache.clear();
+    this.changelogCache.clear();
+  }
+
   // Process Jira issues and store in database
   async processJiraData(): Promise<void> {
     
@@ -2104,56 +2121,81 @@ export class DataProcessor {
       
       console.log(`[getTrendDataFromSnapshots] Filtered to ${activeProjects.length} active projects`);
       
+      // Pre-load all transitions for all active projects (huge performance boost)
+      const issueKeys = activeProjects.map(issue => issue.key);
+      console.log(`[getTrendDataFromSnapshots] Pre-loading transitions for ${issueKeys.length} issues`);
+      const { statusTransitions, healthTransitions } = await dbService.getTransitionsForIssues(issueKeys);
+      
+      // Populate cache
+      this.transitionsCache.clear();
+      for (const issueKey of issueKeys) {
+        this.transitionsCache.set(issueKey, {
+          statusTransitions: statusTransitions.get(issueKey) || [],
+          healthTransitions: healthTransitions.get(issueKey) || [],
+        });
+      }
+      console.log(`[getTrendDataFromSnapshots] Cached transitions for ${this.transitionsCache.size} issues`);
+      
       // Use the shared module for consistent data source strategy
       const { getWeeklyDataWithHealth } = await import('@/lib/weekly-data-source-with-health');
       
       const trendData = [];
       
-      // Process weeks sequentially (to avoid rate limiting)
-      for (const weekStart of weeks) {
-        try {
-          const weekData = await getWeeklyDataWithHealth({
-            monday: weekStart,
-            capacityData,
-            targetAssignees,
-            activeProjects, // Pass pre-fetched projects for performance
-          });
-          
-          // Remove dataSource from result (not part of expected return type)
-          const { dataSource, ...weekDataWithoutSource } = weekData;
-          trendData.push(weekDataWithoutSource);
-        } catch (error) {
-          console.error(`Error getting data for week ${weekStart.toISOString().split('T')[0]}:`, error);
-          // Add empty data point on error
-          trendData.push({
-            week: weekStart.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            }),
-            totalProjects: 0,
-            healthBreakdown: {
-              onTrack: 0,
-              atRisk: 0,
-              offTrack: 0,
-              onHold: 0,
-              mystery: 0,
-              complete: 0,
-              unknown: 0,
-            },
-            statusBreakdown: {
-              generativeDiscovery: 0,
-              problemDiscovery: 0,
-              solutionDiscovery: 0,
-              build: 0,
-              beta: 0,
-              live: 0,
-              wonDo: 0,
-              unknown: 0,
-            },
-          });
-        }
+      // Process weeks in parallel batches (3 at a time to avoid overwhelming the system)
+      const batchSize = 3;
+      for (let i = 0; i < weeks.length; i += batchSize) {
+        const weekBatch = weeks.slice(i, i + batchSize);
+        const weekPromises = weekBatch.map(async (weekStart) => {
+          try {
+            const weekData = await getWeeklyDataWithHealth({
+              monday: weekStart,
+              capacityData,
+              targetAssignees,
+              activeProjects, // Pass pre-fetched projects for performance
+            });
+            
+            // Remove dataSource from result (not part of expected return type)
+            const { dataSource, ...weekDataWithoutSource } = weekData;
+            return weekDataWithoutSource;
+          } catch (error) {
+            console.error(`Error getting data for week ${weekStart.toISOString().split('T')[0]}:`, error);
+            // Return empty data point on error
+            return {
+              week: weekStart.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              }),
+              totalProjects: 0,
+              healthBreakdown: {
+                onTrack: 0,
+                atRisk: 0,
+                offTrack: 0,
+                onHold: 0,
+                mystery: 0,
+                complete: 0,
+                unknown: 0,
+              },
+              statusBreakdown: {
+                generativeDiscovery: 0,
+                problemDiscovery: 0,
+                solutionDiscovery: 0,
+                build: 0,
+                beta: 0,
+                live: 0,
+                wonDo: 0,
+                unknown: 0,
+              },
+            };
+          }
+        });
+        
+        const batchResults = await Promise.all(weekPromises);
+        trendData.push(...batchResults);
       }
+      
+      // Clear caches after processing to free memory
+      this.clearCaches();
       
       return trendData;
     } catch (error) {
@@ -2571,27 +2613,77 @@ export class DataProcessor {
   }
 
   /**
-   * Get the state of a project at a specific date by analyzing its changelog
+   * Get the state of a project at a specific date by analyzing its transitions
+   * Optimized version that uses cached database transitions instead of Jira API
    */
   public async getProjectStateAtDate(issue: any, targetDate: Date): Promise<{
     status: string;
     health: string;
   } | null> {
     try {
-      // Get the changelog for this issue
-      const changelog = await this.getIssueChangelog(issue.key);
+      const issueKey = issue.key;
+      
+      // Try to use cached transitions first (much faster)
+      const cached = this.transitionsCache.get(issueKey);
+      if (cached) {
+        // Start with the issue's creation state (first transition's fromStatus/fromHealth, or current if no transitions)
+        // For issues with no transitions before target date, use current state
+        let currentStatus = issue.fields?.status?.name || issue.status;
+        let currentHealth = issue.fields?.customfield_10238?.value || issue.health || 'Unknown';
+
+        // Find the most recent status transition before or at the target date
+        const relevantStatusTransitions = cached.statusTransitions
+          .filter(t => t.timestamp <= targetDate)
+          .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        
+        if (relevantStatusTransitions.length > 0) {
+          const lastStatusTransition = relevantStatusTransitions[relevantStatusTransitions.length - 1];
+          currentStatus = lastStatusTransition.toStatus;
+        } else if (cached.statusTransitions.length > 0) {
+          // If there are transitions but none before target date, use the first transition's fromStatus
+          // This handles the case where the issue was created after the target date
+          const firstTransition = cached.statusTransitions[0];
+          if (firstTransition.timestamp > targetDate && firstTransition.fromStatus) {
+            currentStatus = firstTransition.fromStatus;
+          }
+        }
+
+        // Find the most recent health transition before or at the target date
+        const relevantHealthTransitions = cached.healthTransitions
+          .filter(t => t.timestamp <= targetDate)
+          .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        
+        if (relevantHealthTransitions.length > 0) {
+          const lastHealthTransition = relevantHealthTransitions[relevantHealthTransitions.length - 1];
+          currentHealth = lastHealthTransition.toHealth;
+        } else if (cached.healthTransitions.length > 0) {
+          // If there are transitions but none before target date, use the first transition's fromHealth
+          const firstTransition = cached.healthTransitions[0];
+          if (firstTransition.timestamp > targetDate && firstTransition.fromHealth) {
+            currentHealth = firstTransition.fromHealth;
+          }
+        }
+
+        return {
+          status: currentStatus,
+          health: currentHealth
+        };
+      }
+
+      // Fallback to Jira API if not in cache (for backward compatibility)
+      const changelog = await this.getIssueChangelog(issueKey);
       
       if (!changelog || !changelog.values) {
         // No changelog data, use current state
         return {
-          status: issue.status,
-          health: issue.health || 'Unknown'
+          status: issue.fields?.status?.name || issue.status,
+          health: issue.fields?.customfield_10238?.value || issue.health || 'Unknown'
         };
       }
 
       // Find the most recent transition before or at the target date
-      let currentStatus = issue.status;
-      let currentHealth = issue.health || 'Unknown';
+      let currentStatus = issue.fields?.status?.name || issue.status;
+      let currentHealth = issue.fields?.customfield_10238?.value || issue.health || 'Unknown';
 
       // Sort changelog entries by date (oldest first)
       const sortedEntries = changelog.values
@@ -2619,8 +2711,8 @@ export class DataProcessor {
       console.error(`Error getting state for ${issue.key} at ${targetDate.toISOString()}:`, error);
       // Fallback to current state
       return {
-        status: issue.status,
-        health: issue.health || 'Unknown'
+        status: issue.fields?.status?.name || issue.status,
+        health: issue.fields?.customfield_10238?.value || issue.health || 'Unknown'
       };
     }
   }
@@ -2700,12 +2792,20 @@ export class DataProcessor {
   }
 
   /**
-   * Get changelog for a specific issue
+   * Get changelog for a specific issue (with caching)
    */
   private async getIssueChangelog(issueKey: string): Promise<any> {
+    // Check cache first
+    if (this.changelogCache.has(issueKey)) {
+      return this.changelogCache.get(issueKey);
+    }
+    
     try {
       const { getIssueChangelog } = await import('./jira-api');
-      return await getIssueChangelog(issueKey);
+      const changelog = await getIssueChangelog(issueKey);
+      // Cache the result
+      this.changelogCache.set(issueKey, changelog);
+      return changelog;
     } catch (error) {
       console.error(`Error fetching changelog for ${issueKey}:`, error);
       return null;

@@ -30,7 +30,7 @@ export default function RootLayout({
                     </h1>
                   </div>
                   <div className="flex items-center space-x-4">
-                    <span className="text-sm text-gray-500">Jira Dashboard v1.0</span>
+                    <span className="text-sm text-gray-500">Jira Dashboard v2.0</span>
                   </div>
                 </div>
               </div>

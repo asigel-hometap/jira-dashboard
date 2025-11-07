@@ -528,7 +528,103 @@ export class DataProcessor {
     return breakdown;
   }
 
-  // Get health breakdown for a specific team member at a historical date
+  // Optimized version that accepts pre-fetched activeProjects (avoids re-fetching)
+  async getActiveHealthBreakdownForTeamMemberAtDateOptimized(
+    teamMemberName: string, 
+    targetDate: Date,
+    activeProjects: any[]
+  ): Promise<{
+    onTrack: number;
+    atRisk: number;
+    offTrack: number;
+    onHold: number;
+    mystery: number;
+    complete: number;
+    unknown: number;
+  }> {
+    // Filter issues by assignee (using pre-fetched activeProjects)
+    const memberIssues = activeProjects.filter(issue => {
+      const assignee = issue.fields.assignee?.displayName;
+      return assignee === teamMemberName;
+    });
+    
+    const breakdown = {
+      onTrack: 0,
+      atRisk: 0,
+      offTrack: 0,
+      onHold: 0,
+      mystery: 0,
+      complete: 0,
+      unknown: 0
+    };
+
+    // Process issues in parallel for better performance
+    const processIssue = async (issue: any) => {
+      try {
+        // First check if the issue was assigned to this team member at the target date
+        const wasAssignedAtDate = await this.wasIssueAssignedToMemberAtDate(issue.key, teamMemberName, targetDate, issue);
+        
+        if (!wasAssignedAtDate) {
+          return null;
+        }
+        
+        const projectState = await this.getProjectStateAtDate(issue, targetDate);
+        
+        if (projectState) {
+          // Check if project was in an active status at this date
+          const isActive = projectState.status === '02 Generative Discovery' ||
+                          projectState.status === '04 Problem Discovery' ||
+                          projectState.status === '05 Solution Discovery' ||
+                          projectState.status === '06 Build' ||
+                          projectState.status === '07 Beta';
+          
+          if (isActive) {
+            return projectState.health;
+          }
+        }
+        return null;
+      } catch (error) {
+        console.warn(`Error getting state for ${issue.key} at ${targetDate.toISOString()}:`, error);
+        return null;
+      }
+    };
+    
+    // Process all issues in parallel (much faster than sequential)
+    const healthResults = await Promise.all(memberIssues.map(processIssue));
+    
+    // Count health values
+    for (const health of healthResults) {
+      if (!health) continue;
+      
+      switch (health) {
+        case 'On Track':
+          breakdown.onTrack++;
+          break;
+        case 'At Risk':
+          breakdown.atRisk++;
+          break;
+        case 'Off Track':
+          breakdown.offTrack++;
+          break;
+        case 'On Hold':
+          breakdown.onHold++;
+          break;
+        case 'Mystery':
+          breakdown.mystery++;
+          break;
+        case 'Complete':
+          breakdown.complete++;
+          break;
+        default:
+          breakdown.unknown++;
+          break;
+      }
+    }
+
+    return breakdown;
+  }
+
+  // Public method that fetches issues and calls the optimized version
   async getActiveHealthBreakdownForTeamMemberAtDate(teamMemberName: string, targetDate: Date): Promise<{
     onTrack: number;
     atRisk: number;
@@ -561,78 +657,164 @@ export class DataProcessor {
              status === '07 Beta';
     });
     
-    // Filter issues by assignee
+    // Use the optimized version
+    return this.getActiveHealthBreakdownForTeamMemberAtDateOptimized(teamMemberName, targetDate, activeProjects);
+  }
+
+  /**
+   * Get status breakdown for a team member at a specific date (optimized version with pre-fetched projects)
+   */
+  async getActiveStatusBreakdownForTeamMemberAtDateOptimized(
+    teamMemberName: string,
+    targetDate: Date,
+    activeProjects: any[]
+  ): Promise<{
+    generativeDiscovery: number;
+    problemDiscovery: number;
+    solutionDiscovery: number;
+    build: number;
+    beta: number;
+    live: number;
+    wonDo: number;
+    unknown: number;
+  }> {
+    // Filter issues by assignee (using pre-fetched activeProjects)
     const memberIssues = activeProjects.filter(issue => {
       const assignee = issue.fields.assignee?.displayName;
       return assignee === teamMemberName;
     });
-    
+
     const breakdown = {
-      onTrack: 0,
-      atRisk: 0,
-      offTrack: 0,
-      onHold: 0,
-      mystery: 0,
-      complete: 0,
-      unknown: 0
+      generativeDiscovery: 0,
+      problemDiscovery: 0,
+      solutionDiscovery: 0,
+      build: 0,
+      beta: 0,
+      live: 0,
+      wonDo: 0,
+      unknown: 0,
     };
 
-    // For each issue, determine its health status at the target date
-    for (const issue of memberIssues) {
+    // Process issues in parallel for better performance
+    const processIssue = async (issue: any) => {
       try {
-        // First check if the issue was assigned to this team member at the target date
-        // Pass the issue object so we can check creation date if needed
-        const wasAssignedAtDate = await this.wasIssueAssignedToMemberAtDate(issue.key, teamMemberName, targetDate, issue);
-        
-        if (!wasAssignedAtDate) {
-          // Skip this issue if it wasn't assigned to the team member at the target date
-          continue;
+        // Check if issue was assigned to this member at the target date
+        const wasAssigned = await this.wasIssueAssignedToMemberAtDate(
+          issue.key,
+          teamMemberName,
+          targetDate,
+          issue
+        );
+
+        if (!wasAssigned) {
+          return null;
         }
-        
+
+        // Get the project state at the target date
         const projectState = await this.getProjectStateAtDate(issue, targetDate);
-        
-        if (projectState) {
-          // Check if project was in an active status at this date
-          // Use the same active statuses as the initial filter
-          const isActive = projectState.status === '02 Generative Discovery' ||
-                          projectState.status === '04 Problem Discovery' ||
-                          projectState.status === '05 Solution Discovery' ||
-                          projectState.status === '06 Build' ||
-                          projectState.status === '07 Beta';
-          
-          if (isActive) {
-            switch (projectState.health) {
-              case 'On Track':
-                breakdown.onTrack++;
-                break;
-              case 'At Risk':
-                breakdown.atRisk++;
-                break;
-              case 'Off Track':
-                breakdown.offTrack++;
-                break;
-              case 'On Hold':
-                breakdown.onHold++;
-                break;
-              case 'Mystery':
-                breakdown.mystery++;
-                break;
-              case 'Complete':
-                breakdown.complete++;
-                break;
-              default:
-                breakdown.unknown++;
-                break;
-            }
-          }
+        if (!projectState) {
+          return null;
         }
+
+        // Only count if in active status at that date
+        // Note: "08 Live" is included here because it's an active status (different from "09 Live" which is inactive)
+        const activeStatuses = [
+          '02 Generative Discovery',
+          '04 Problem Discovery',
+          '05 Solution Discovery',
+          '06 Build',
+          '07 Beta',
+          '08 Live',
+        ];
+
+        if (!activeStatuses.includes(projectState.status)) {
+          return null;
+        }
+
+        return projectState.status;
       } catch (error) {
-        console.warn(`Error getting state for ${issue.key} at ${targetDate.toISOString()}:`, error);
-        breakdown.unknown++;
+        console.warn(`Error processing issue ${issue.key} for status breakdown:`, error);
+        return null;
+      }
+    };
+
+    const statusPromises = memberIssues.map(processIssue);
+    const statuses = await Promise.all(statusPromises);
+
+    // Count by status
+    for (const status of statuses) {
+      if (!status) continue;
+
+      switch (status) {
+        case '02 Generative Discovery':
+          breakdown.generativeDiscovery++;
+          break;
+        case '04 Problem Discovery':
+          breakdown.problemDiscovery++;
+          break;
+        case '05 Solution Discovery':
+          breakdown.solutionDiscovery++;
+          break;
+        case '06 Build':
+          breakdown.build++;
+          break;
+        case '07 Beta':
+          breakdown.beta++;
+          break;
+        case '08 Live':
+          breakdown.live++;
+          break;
+        case "Won't Do":
+          breakdown.wonDo++;
+          break;
+        default:
+          breakdown.unknown++;
       }
     }
 
     return breakdown;
+  }
+
+  /**
+   * Get status breakdown for a team member at a specific date (public method)
+   */
+  async getActiveStatusBreakdownForTeamMemberAtDate(
+    teamMemberName: string,
+    targetDate: Date
+  ): Promise<{
+    generativeDiscovery: number;
+    problemDiscovery: number;
+    solutionDiscovery: number;
+    build: number;
+    beta: number;
+    live: number;
+    wonDo: number;
+    unknown: number;
+  }> {
+    // Use live Jira data instead of database data for consistency
+    const { getAllIssuesForCycleAnalysis } = await import('@/lib/jira-api');
+    const jiraIssues = await getAllIssuesForCycleAnalysis();
+
+    // Filter for active projects (discovery, build, beta statuses) and exclude archived projects
+    const activeProjects = jiraIssues.filter(issue => {
+      const status = issue.fields.status.name;
+      const isArchived = issue.fields.customfield_10454; // "Idea archived" field
+      const archivedOn = issue.fields.customfield_10456; // "Idea archived on" field
+
+      // Exclude if archived
+      if (isArchived || archivedOn) {
+        return false;
+      }
+
+      // Include only discovery, build, beta statuses
+      return status === '02 Generative Discovery' ||
+             status === '04 Problem Discovery' ||
+             status === '05 Solution Discovery' ||
+             status === '06 Build' ||
+             status === '07 Beta';
+    });
+
+    return this.getActiveStatusBreakdownForTeamMemberAtDateOptimized(teamMemberName, targetDate, activeProjects);
   }
 
   // Calculate weeks at risk for an issue based on changelog data
@@ -1852,6 +2034,130 @@ export class DataProcessor {
       return trendData;
     } catch (error) {
       console.error('Error generating trend data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get trend data using snapshot data (same as sparkline) with health breakdown reconstruction
+   * This ensures consistency with sparkline data and accurate historical trends
+   */
+  async getTrendDataFromSnapshots(filters: {
+    assignees?: string[];
+    teamMembersOnly?: boolean;
+  } = {}): Promise<Array<{
+    week: string;
+    totalProjects: number;
+    healthBreakdown: {
+      onTrack: number;
+      atRisk: number;
+      offTrack: number;
+      onHold: number;
+      mystery: number;
+      complete: number;
+      unknown: number;
+    };
+    statusBreakdown: {
+      generativeDiscovery: number;
+      problemDiscovery: number;
+      solutionDiscovery: number;
+      build: number;
+      beta: number;
+      live: number;
+      wonDo: number;
+      unknown: number;
+    };
+  }>> {
+    try {
+      const dbService = getDatabaseService();
+      
+      // Get capacity data (snapshots) - same source as sparkline
+      const capacityData = await dbService.getCapacityData();
+      
+      // Generate past 12 weeks
+      const weeks = this.generatePast12Weeks();
+      console.log(`[getTrendDataFromSnapshots] Processing ${weeks.length} weeks`);
+      
+      const targetAssignees = filters.assignees || [];
+      
+      // Fetch all Jira issues once (used for all weeks) - huge performance improvement
+      const { getAllIssuesForCycleAnalysis } = await import('@/lib/jira-api');
+      const allJiraIssues = await getAllIssuesForCycleAnalysis();
+      console.log(`[getTrendDataFromSnapshots] Fetched ${allJiraIssues.length} issues from Jira`);
+      
+      // Filter for active projects once (used for all weeks)
+      const activeProjects = allJiraIssues.filter(issue => {
+        const status = issue.fields.status.name;
+        const isArchived = issue.fields.customfield_10454;
+        const archivedOn = issue.fields.customfield_10456;
+        
+        if (isArchived || archivedOn) {
+          return false;
+        }
+        
+        return status === '02 Generative Discovery' ||
+               status === '04 Problem Discovery' ||
+               status === '05 Solution Discovery' ||
+               status === '06 Build' ||
+               status === '07 Beta';
+      });
+      
+      console.log(`[getTrendDataFromSnapshots] Filtered to ${activeProjects.length} active projects`);
+      
+      // Use the shared module for consistent data source strategy
+      const { getWeeklyDataWithHealth } = await import('@/lib/weekly-data-source-with-health');
+      
+      const trendData = [];
+      
+      // Process weeks sequentially (to avoid rate limiting)
+      for (const weekStart of weeks) {
+        try {
+          const weekData = await getWeeklyDataWithHealth({
+            monday: weekStart,
+            capacityData,
+            targetAssignees,
+            activeProjects, // Pass pre-fetched projects for performance
+          });
+          
+          // Remove dataSource from result (not part of expected return type)
+          const { dataSource, ...weekDataWithoutSource } = weekData;
+          trendData.push(weekDataWithoutSource);
+        } catch (error) {
+          console.error(`Error getting data for week ${weekStart.toISOString().split('T')[0]}:`, error);
+          // Add empty data point on error
+          trendData.push({
+            week: weekStart.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            }),
+            totalProjects: 0,
+            healthBreakdown: {
+              onTrack: 0,
+              atRisk: 0,
+              offTrack: 0,
+              onHold: 0,
+              mystery: 0,
+              complete: 0,
+              unknown: 0,
+            },
+            statusBreakdown: {
+              generativeDiscovery: 0,
+              problemDiscovery: 0,
+              solutionDiscovery: 0,
+              build: 0,
+              beta: 0,
+              live: 0,
+              wonDo: 0,
+              unknown: 0,
+            },
+          });
+        }
+      }
+      
+      return trendData;
+    } catch (error) {
+      console.error('Error generating trend data from snapshots:', error);
       throw error;
     }
   }

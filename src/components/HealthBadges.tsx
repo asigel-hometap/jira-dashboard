@@ -27,7 +27,7 @@ const healthConfig = {
   atRisk: { label: 'At Risk', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
   offTrack: { label: 'Off Track', color: 'bg-red-100 text-red-800 border-red-200' },
   onHold: { label: 'On Hold', color: 'bg-purple-100 text-purple-800 border-purple-200' },
-  mystery: { label: 'Mystery', color: 'bg-purple-100 text-purple-800 border-purple-200' },
+  mystery: { label: 'Mystery', color: 'bg-purple-400 text-white border-purple-400' },
   complete: { label: 'Complete', color: 'bg-gray-100 text-gray-800 border-gray-200' },
   unknown: { label: 'Unknown', color: 'bg-gray-100 text-gray-600 border-gray-300' }
 } as const;

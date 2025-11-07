@@ -11,6 +11,7 @@ const navItems = [
   { href: '/trends', label: 'Trends Over Time' },
   { href: '/cycle-time', label: 'Cycle Time Analysis' },
   { href: '/cycle-time-details', label: 'Cycle Time Details' },
+  { href: '/capacity-data', label: 'Capacity Data' },
 ] as const;
 
 const Navigation = React.memo(() => {

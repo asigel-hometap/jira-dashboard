@@ -34,15 +34,21 @@ interface SharedSparklineResponse {
 let sharedData: SharedSparklineResponse | null = null;
 let sharedLoading = false;
 let sharedError: string | null = null;
-let sharedListeners: Set<() => void> = new Set();
+const sharedListeners: Set<() => void> = new Set();
 let sharedFetchPromise: Promise<void> | null = null;
 
-async function fetchSharedSparklineData(): Promise<SharedSparklineResponse> {
-  const response = await fetch('/api/accurate-sparkline', {
+async function fetchSharedSparklineData(forceRefresh = false): Promise<SharedSparklineResponse> {
+  // Add cache-busting parameter if forcing refresh
+  const url = forceRefresh 
+    ? `/api/accurate-sparkline?t=${Date.now()}`
+    : '/api/accurate-sparkline';
+    
+  const response = await fetch(url, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
     },
+    cache: forceRefresh ? 'no-store' : 'default',
   });
 
   if (!response.ok) {
@@ -113,8 +119,25 @@ export function useSharedSparklineData(teamMember: string): {
     };
     sharedListeners.add(listener);
 
-    // Ensure data is loaded
-    ensureSharedData();
+    // Ensure data is loaded - use cache-busting on initial load to avoid stale data
+    if (!sharedData) {
+      // First load - fetch fresh data
+      sharedLoading = true;
+      sharedError = null;
+      fetchSharedSparklineData(true)
+        .then(data => {
+          sharedData = data;
+          sharedLoading = false;
+          notifyListeners();
+        })
+        .catch(error => {
+          sharedError = error instanceof Error ? error.message : 'Unknown error';
+          sharedLoading = false;
+          notifyListeners();
+        });
+    } else {
+      ensureSharedData();
+    }
 
     return () => {
       sharedListeners.delete(listener);
@@ -127,7 +150,27 @@ export function useSharedSparklineData(teamMember: string): {
       // Clear cached data to force refresh
       sharedData = null;
       sharedError = null;
-      await ensureSharedData();
+      sharedFetchPromise = null;
+      
+      // Force fetch with cache-busting
+      sharedLoading = true;
+      sharedError = null;
+      sharedFetchPromise = fetchSharedSparklineData(true)
+        .then(data => {
+          sharedData = data;
+          sharedLoading = false;
+          notifyListeners();
+        })
+        .catch(error => {
+          sharedError = error instanceof Error ? error.message : 'Unknown error';
+          sharedLoading = false;
+          notifyListeners();
+        })
+        .finally(() => {
+          sharedFetchPromise = null;
+        });
+      
+      await sharedFetchPromise;
     } finally {
       setIsRefreshing(false);
     }

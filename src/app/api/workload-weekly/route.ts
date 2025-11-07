@@ -105,7 +105,6 @@ export async function GET(request: NextRequest) {
         },
         snapshotDate: weekSnapshot.date.toISOString().split('T')[0],
         dataSource: 'live_jira', // Always using live data for performance
-        snapshotCount, // Store original snapshot count for reference
         isHistorical: !isCurrentWeek,
         note: isCurrentWeek ? 'Using live data for current week' : 'Using live data (snapshot date is old, historical reconstruction too slow)'
       };

@@ -58,8 +58,16 @@ export async function GET(request: NextRequest) {
         } : null,
         allSnapshots: allCapacityData.map(d => ({
           date: d.date.toISOString().split('T')[0],
+          adam: d.adam,
+          jennie: d.jennie,
+          jacqueline: d.jacqueline,
+          robert: d.robert,
+          garima: d.garima,
+          lizzy: d.lizzy,
+          sanela: d.sanela,
           total: d.total,
-          notes: d.notes
+          notes: d.notes,
+          hasIndividualCounts: d.adam != null || d.jennie != null || d.jacqueline != null
         }))
       }
     });

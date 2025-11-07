@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { initializeDatabase, getDatabaseService } from '@/lib/database-factory';
-import { getDataProcessor } from '@/lib/data-processor';
-import { STATUSES, HEALTH_VALUES } from '@/types/jira';
+import { getWeeklyData, WeeklyDataResult } from '@/lib/weekly-data-source';
 
 interface WeeklySnapshot {
   date: string;
@@ -13,19 +12,16 @@ interface WeeklySnapshot {
   lizzy: number;
   sanela: number;
   total: number;
-  dataSource: 'csv' | 'trends' | 'current' | 'error';
-  error?: string;
+  dataSource: 'csv' | 'snapshot' | 'live' | 'reconstruction' | 'skip';
+  note?: string;
 }
 
-
-// Active statuses for filtering
-const ACTIVE_STATUSES = [
-  STATUSES.GENERATIVE_DISCOVERY,
-  STATUSES.PROBLEM_DISCOVERY,
-  STATUSES.SOLUTION_DISCOVERY,
-  STATUSES.BUILD,
-  STATUSES.BETA
-];
+interface MemberDataPoint {
+  value: number;
+  date: string;
+  dataSource: WeeklySnapshot['dataSource'];
+  note?: string;
+}
 
 // Team member name mapping
 const TEAM_MEMBERS = {
@@ -46,6 +42,9 @@ export async function GET() {
     // Get capacity data for quick lookup
     const capacityData = await db.getCapacityData();
     
+    // Load CSV cache for legacy data
+    const csvDataCache = loadCSVDataCache();
+    
     // Generate weekly snapshots from Feb 10, 2025 to current date
     const snapshots: WeeklySnapshot[] = [];
     const startDate = new Date('2025-02-10');
@@ -54,110 +53,56 @@ export async function GET() {
     // Generate all Mondays from start date to current date
     const mondays = generateMondays(startDate, currentDate);
     
+    // Process each week using the shared data source strategy
     for (const monday of mondays) {
       const mondayStr = monday.toISOString().split('T')[0];
       
-      if (monday < new Date('2025-09-15')) {
-        // Use CSV data for dates before September 15, 2025
-        const csvData = await getCSVDataForDate(monday);
-        if (csvData) {
-          snapshots.push({
-            date: mondayStr,
-            adam: csvData.adam || 0,
-            jennie: csvData.jennie || 0,
-            jacqueline: csvData.jacqueline || 0,
-            robert: csvData.robert || 0,
-            garima: csvData.garima || 0,
-            lizzy: csvData.lizzy || 0,
-            sanela: csvData.sanela || 0,
-            total: csvData.total || 0,
-            dataSource: 'csv'
-          });
-        }
-      } else {
-        // For September 15+ dates, first check if we have a snapshot in capacity_data
-        // This is much faster than historical reconstruction
-        const snapshotForDate = capacityData.find(d => {
-          const snapshotDate = new Date(d.date);
-          snapshotDate.setHours(0, 0, 0, 0);
-          const mondayDate = new Date(monday);
-          mondayDate.setHours(0, 0, 0, 0);
-          return snapshotDate.getTime() === mondayDate.getTime();
+      try {
+        const result = await getWeeklyData({
+          monday,
+          capacityData,
+          csvDataCache,
+          currentDate,
+          useLiveDataForRecentWeeks: true,
+          recentWeekThresholdDays: 14,
+          historicalReconstructionThresholdDays: 30,
         });
         
-        if (snapshotForDate) {
-          // Use stored snapshot - fast!
-          snapshots.push({
-            date: mondayStr,
-            adam: snapshotForDate.adam || 0,
-            jennie: snapshotForDate.jennie || 0,
-            jacqueline: snapshotForDate.jacqueline || 0,
-            robert: snapshotForDate.robert || 0,
-            garima: snapshotForDate.garima || 0,
-            lizzy: snapshotForDate.lizzy || 0,
-            sanela: snapshotForDate.sanela || 0,
-            total: snapshotForDate.total || 0,
-            dataSource: 'snapshot'
-          });
-        } else {
-          // No snapshot - use historical reconstruction (slow, but only for missing weeks)
-          // Only do this for recent weeks, skip if too old to avoid performance issues
-          const daysSince = Math.floor((currentDate.getTime() - monday.getTime()) / (24 * 60 * 60 * 1000));
-          
-          if (daysSince <= 30) {
-            // Only reconstruct for weeks within last 30 days
-            try {
-              const trendsData = await getTrendsDataForDate(monday);
-              snapshots.push({
-                date: mondayStr,
-                adam: trendsData?.adam || 0,
-                jennie: trendsData?.jennie || 0,
-                jacqueline: trendsData?.jacqueline || 0,
-                robert: trendsData?.robert || 0,
-                garima: trendsData?.garima || 0,
-                lizzy: trendsData?.lizzy || 0,
-                sanela: trendsData?.sanela || 0,
-                total: trendsData?.total || 0,
-                dataSource: trendsData ? 'trends' : 'current'
-              });
-            } catch (error) {
-              console.error(`Error getting trends data for ${mondayStr}:`, error);
-              snapshots.push({
-                date: mondayStr,
-                adam: 0,
-                jennie: 0,
-                jacqueline: 0,
-                robert: 0,
-                garima: 0,
-                lizzy: 0,
-                sanela: 0,
-                total: 0,
-                dataSource: 'error',
-                error: error instanceof Error ? error.message : 'Unknown error'
-              });
-            }
-          } else {
-            // Too old, skip historical reconstruction (too slow)
-            snapshots.push({
-              date: mondayStr,
-              adam: 0,
-              jennie: 0,
-              jacqueline: 0,
-              robert: 0,
-              garima: 0,
-              lizzy: 0,
-              sanela: 0,
-              total: 0,
-              dataSource: 'skipped',
-              note: 'No snapshot found and week is too old for reconstruction'
-            });
-          }
-        }
+        // Map the result to WeeklySnapshot format
+        snapshots.push({
+          date: mondayStr,
+          adam: result.data.adam,
+          jennie: result.data.jennie,
+          jacqueline: result.data.jacqueline,
+          robert: result.data.robert,
+          garima: result.data.garima,
+          lizzy: result.data.lizzy,
+          sanela: result.data.sanela,
+          total: result.data.total,
+          dataSource: mapDataSourceType(result.source),
+          note: result.metadata?.note,
+        });
+      } catch (error) {
+        console.error(`Error getting data for week ${mondayStr}:`, error);
+        // Add error snapshot
+        snapshots.push({
+          date: mondayStr,
+          adam: 0,
+          jennie: 0,
+          jacqueline: 0,
+          robert: 0,
+          garima: 0,
+          lizzy: 0,
+          sanela: 0,
+          total: 0,
+          dataSource: 'skip',
+          note: error instanceof Error ? error.message : 'Unknown error',
+        });
       }
     }
     
     // Pre-calculate member data to avoid repeated processing on client
-    const memberDataMap = new Map<string, any[]>();
+    const memberDataMap = new Map<string, MemberDataPoint[]>();
     
     // Initialize arrays for each member
     Object.values(TEAM_MEMBERS).forEach(memberKey => {
@@ -167,13 +112,16 @@ export async function GET() {
     // Process snapshots once
     snapshots.forEach(snapshot => {
       Object.values(TEAM_MEMBERS).forEach(memberKey => {
-        const value = (snapshot as any)[memberKey] || 0;
-        memberDataMap.get(memberKey)?.push({
-          value,
-          date: snapshot.date,
-          dataSource: snapshot.dataSource,
-          error: (snapshot as any).error
-        });
+        const value = (snapshot[memberKey as keyof WeeklySnapshot] as number) || 0;
+        const memberData = memberDataMap.get(memberKey);
+        if (memberData) {
+          memberData.push({
+            value: typeof value === 'number' ? value : 0,
+            date: snapshot.date,
+            dataSource: snapshot.dataSource,
+            note: snapshot.note,
+          });
+        }
       });
     });
     
@@ -185,13 +133,13 @@ export async function GET() {
         totalWeeks: snapshots.length,
         csvWeeks: snapshots.filter(s => s.dataSource === 'csv').length,
         snapshotWeeks: snapshots.filter(s => s.dataSource === 'snapshot').length,
-        trendsWeeks: snapshots.filter(s => s.dataSource === 'trends').length,
-        currentWeeks: snapshots.filter(s => s.dataSource === 'current').length,
-        errorWeeks: snapshots.filter(s => s.dataSource === 'error').length
+        liveWeeks: snapshots.filter(s => s.dataSource === 'live').length,
+        reconstructionWeeks: snapshots.filter(s => s.dataSource === 'reconstruction').length,
+        skippedWeeks: snapshots.filter(s => s.dataSource === 'skip').length,
       }
     }, {
       headers: {
-        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' // Cache for 5 minutes
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' // Cache for 1 minute
       }
     });
     
@@ -225,6 +173,29 @@ export async function POST() {
   }
 }
 
+/**
+ * Map DataSourceType to the format expected by the API response
+ */
+function mapDataSourceType(source: WeeklyDataResult['source']): WeeklySnapshot['dataSource'] {
+  switch (source) {
+    case 'live':
+      return 'live';
+    case 'snapshot':
+      return 'snapshot';
+    case 'reconstruction':
+      return 'reconstruction';
+    case 'csv':
+      return 'csv';
+    case 'skip':
+      return 'skip';
+    default:
+      return 'skip';
+  }
+}
+
+/**
+ * Generate all Mondays between start and end dates
+ */
 function generateMondays(startDate: Date, endDate: Date): Date[] {
   const mondays: Date[] = [];
   const current = new Date(startDate);
@@ -242,16 +213,31 @@ function generateMondays(startDate: Date, endDate: Date): Date[] {
   return mondays;
 }
 
-// Cache CSV data to avoid reading file multiple times
-let csvDataCache: Map<string, Partial<WeeklySnapshot>> | null = null;
+/**
+ * Cache CSV data to avoid reading file multiple times
+ */
+interface CSVDataEntry {
+  adam: number;
+  jennie: number;
+  jacqueline: number;
+  robert: number;
+  garima: number;
+  lizzy: number;
+  sanela: number;
+  total: number;
+}
 
-function loadCSVDataCache(): Map<string, Partial<WeeklySnapshot>> {
+let csvDataCache: Map<string, CSVDataEntry> | null = null;
+
+function loadCSVDataCache(): Map<string, CSVDataEntry> {
   if (csvDataCache) {
     return csvDataCache;
   }
   
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const fs = require('fs');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const path = require('path');
     
     const csvPath = path.join(process.cwd(), 'PM Capacity Tracking.csv');
@@ -286,115 +272,3 @@ function loadCSVDataCache(): Map<string, Partial<WeeklySnapshot>> {
     return new Map();
   }
 }
-
-async function getCSVDataForDate(date: Date): Promise<Partial<WeeklySnapshot> | null> {
-  try {
-    const cache = loadCSVDataCache();
-    
-    // Try multiple date formats
-    const targetDateStr1 = date.toLocaleDateString('en-US', {
-      month: 'numeric',
-      day: 'numeric',
-      year: 'numeric'
-    });
-    
-    const targetDateStr2 = `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-    
-    return cache.get(targetDateStr1) || cache.get(targetDateStr2) || null;
-  } catch (error) {
-    console.error('Error getting CSV data:', error);
-    return null;
-  }
-}
-
-async function getCurrentProjectCounts(db: any): Promise<Partial<WeeklySnapshot>> {
-  // Get current active issues from database
-  const issues = await db.getActiveIssues();
-  
-  // Count active projects by assignee using the new filtering criteria
-  const counts = {
-    adam: 0,
-    jennie: 0,
-    jacqueline: 0,
-    robert: 0,
-    garima: 0,
-    lizzy: 0,
-    sanela: 0,
-    total: 0
-  };
-  
-  console.log(`Processing ${issues.length} issues for current project counts`);
-  
-  for (const issue of issues) {
-    // Apply filtering criteria: only filter by status (no health filtering)
-    // All health values should be included
-    const isActive = ACTIVE_STATUSES.includes(issue.status);
-    
-    if (isActive && issue.assignee) {
-      const memberKey = TEAM_MEMBERS[issue.assignee as keyof typeof TEAM_MEMBERS];
-      if (memberKey) {
-        counts[memberKey]++;
-        counts.total++;
-        console.log(`Found active project for ${issue.assignee}: ${issue.key} (${issue.status}, ${issue.health})`);
-      }
-    }
-  }
-  
-  console.log('Current project counts:', counts);
-  return counts;
-}
-
-async function getTrendsDataForDate(targetDate: Date): Promise<Partial<WeeklySnapshot> | null> {
-  try {
-    // Calculate counts directly using the data processor for the target date
-    // This avoids API call issues and uses the same logic as workload-weekly
-    const { getDataProcessor } = await import('@/lib/data-processor');
-    const dataProcessor = getDataProcessor();
-    
-    const teamMemberMap = {
-      'Adam Sigel': 'adam',
-      'Jennie Goldenberg': 'jennie',
-      'Jacqueline Gallagher': 'jacqueline',
-      'Robert J. Johnson': 'robert',
-      'Garima Giri': 'garima',
-      'Lizzy Magill': 'lizzy',
-      'Sanela Smaka': 'sanela'
-    };
-    
-    const counts: Partial<WeeklySnapshot> = {
-      adam: 0,
-      jennie: 0,
-      jacqueline: 0,
-      robert: 0,
-      garima: 0,
-      lizzy: 0,
-      sanela: 0,
-      total: 0
-    };
-    
-    // Calculate for each team member
-    for (const [fullName, shortName] of Object.entries(teamMemberMap)) {
-      try {
-        const healthBreakdown = await dataProcessor.getActiveHealthBreakdownForTeamMemberAtDate(fullName, targetDate);
-        
-        // Calculate total as sum of all health values
-        const total = healthBreakdown.onTrack + healthBreakdown.atRisk + 
-                     healthBreakdown.offTrack + healthBreakdown.onHold + 
-                     healthBreakdown.mystery + healthBreakdown.complete + 
-                     healthBreakdown.unknown;
-        
-        (counts as any)[shortName] = total;
-        counts.total = (counts.total || 0) + total;
-      } catch (error) {
-        console.warn(`Error calculating count for ${fullName} at ${targetDate.toISOString().split('T')[0]}:`, error);
-      }
-    }
-    
-    console.log(`Calculated trends data for ${targetDate.toISOString().split('T')[0]}:`, counts);
-    return counts;
-  } catch (error) {
-    console.error('Error calculating trends data:', error);
-    return null;
-  }
-}
-

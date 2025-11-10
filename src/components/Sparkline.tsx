@@ -23,7 +23,7 @@ const CustomTooltip = React.memo(({ active, payload, label }: any) => {
       <div className="bg-white p-2 border border-gray-200 rounded shadow-lg text-xs">
         <p className="font-medium text-gray-900">{`Date: ${label}`}</p>
         <p className={isOverloaded ? 'text-red-600' : 'text-blue-600'}>
-          Active Projects: {value}
+          Total Projects: {value}
         </p>
       </div>
     );

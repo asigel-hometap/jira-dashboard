@@ -48,7 +48,7 @@ const WorkloadCard = React.memo(({ member, trendData, globalMaxProjects }: Workl
               <p className="text-2xl font-semibold text-gray-900">
                 {activeProjectCount}
               </p>
-              <p className="text-sm text-gray-500">active projects</p>
+              <p className="text-sm text-gray-500">total projects</p>
             </div>
           </div>
 
